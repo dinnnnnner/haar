@@ -1,0 +1,8 @@
+[
+  {
+    "status": "locked",
+    "input_file": "/home/zich/haar/RobustData/CityRoad/AllData_Robust_0_120kph_0624_0706.txt",
+    "case_dir": "/home/zich/haar/robust_data_results_locked_test/cases/AllData_Robust_0_120kph_0624_0706",
+    "error": "E-SafeNet locked file; use the individual plaintext exports"
+  }
+]

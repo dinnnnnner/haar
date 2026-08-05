@@ -1,0 +1,14 @@
+{
+  "algorithm": "evidence",
+  "samples": 488,
+  "classification_counts": {
+    "EVENT_OK": 325,
+    "EVENT_LATE": 0,
+    "EVENT_MISS": 0,
+    "EVENT_FALSE_ALARM": 1,
+    "EVENT_FALSE_ALARM_AND_DETECTED": 82,
+    "NORMAL_OK": 62,
+    "NORMAL_FALSE_ALARM": 18
+  },
+  "important": "Augmented samples are correlated derivatives of eight real events; these counts are stress-test results, not independent real-road metrics."
+}

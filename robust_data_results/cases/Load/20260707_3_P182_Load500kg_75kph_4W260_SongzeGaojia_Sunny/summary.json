@@ -1,0 +1,120 @@
+{
+  "input_file": "/home/zich/haar/RobustData/Load/20260707_3_P182_Load500kg_75kph_4W260_SongzeGaojia_Sunny.txt",
+  "output_dir": "/home/zich/haar/robust_data_results/cases/Load/20260707_3_P182_Load500kg_75kph_4W260_SongzeGaojia_Sunny",
+  "frames": 119500,
+  "duration_s": 1194.99,
+  "raw_rows_after_marks_end_usable": 597500,
+  "sample_time_s": 0.01,
+  "cog_count": 48,
+  "wheel_count": 4,
+  "factor_meta": [
+    {
+      "lap_count": 9810,
+      "accepted_laps": 9806,
+      "rejected_laps": 4,
+      "per_phase_min_samples": 9806,
+      "per_phase_median_samples": 9806.0,
+      "factor_min": 0.9985680654598279,
+      "factor_max": 1.0021687200815812,
+      "factor_peak_to_peak_pct": 0.36006546217532964,
+      "wheel": 0,
+      "event_count": 470886
+    },
+    {
+      "lap_count": 9801,
+      "accepted_laps": 9797,
+      "rejected_laps": 4,
+      "per_phase_min_samples": 9797,
+      "per_phase_median_samples": 9797.0,
+      "factor_min": 0.9980904052560771,
+      "factor_max": 1.0021225277530068,
+      "factor_peak_to_peak_pct": 0.40321224969297464,
+      "wheel": 1,
+      "event_count": 470459
+    },
+    {
+      "lap_count": 9803,
+      "accepted_laps": 9800,
+      "rejected_laps": 3,
+      "per_phase_min_samples": 9800,
+      "per_phase_median_samples": 9800.0,
+      "factor_min": 0.9912261171333544,
+      "factor_max": 1.0053894784816881,
+      "factor_peak_to_peak_pct": 1.4163361348333736,
+      "wheel": 2,
+      "event_count": 470590
+    },
+    {
+      "lap_count": 9797,
+      "accepted_laps": 9791,
+      "rejected_laps": 6,
+      "per_phase_min_samples": 9791,
+      "per_phase_median_samples": 9791.0,
+      "factor_min": 0.9977928244786911,
+      "factor_max": 1.0020119891956796,
+      "factor_peak_to_peak_pct": 0.4219164716988466,
+      "wheel": 3,
+      "event_count": 470259
+    }
+  ],
+  "rust_raw_state": [
+    {
+      "wheel": 0,
+      "low_speed_frames": 7263,
+      "lose_cog_frames": 0,
+      "learned_laps": 21,
+      "delta_frames": 112237
+    },
+    {
+      "wheel": 1,
+      "low_speed_frames": 7205,
+      "lose_cog_frames": 0,
+      "learned_laps": 20,
+      "delta_frames": 112295
+    },
+    {
+      "wheel": 2,
+      "low_speed_frames": 7269,
+      "lose_cog_frames": 0,
+      "learned_laps": 21,
+      "delta_frames": 112231
+    },
+    {
+      "wheel": 3,
+      "low_speed_frames": 7265,
+      "lose_cog_frames": 0,
+      "learned_laps": 20,
+      "delta_frames": 112235
+    }
+  ],
+  "rust_ref_comp_state": [
+    {
+      "wheel": 0,
+      "low_speed_frames": 7263,
+      "lose_cog_frames": 0,
+      "learned_laps": 21,
+      "delta_frames": 112237
+    },
+    {
+      "wheel": 1,
+      "low_speed_frames": 7205,
+      "lose_cog_frames": 0,
+      "learned_laps": 20,
+      "delta_frames": 112295
+    },
+    {
+      "wheel": 2,
+      "low_speed_frames": 7269,
+      "lose_cog_frames": 0,
+      "learned_laps": 21,
+      "delta_frames": 112231
+    },
+    {
+      "wheel": 3,
+      "low_speed_frames": 7265,
+      "lose_cog_frames": 0,
+      "learned_laps": 20,
+      "delta_frames": 112235
+    }
+  ]
+}

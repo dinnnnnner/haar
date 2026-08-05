@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "evaluation_date": "2026-08-05",
+  "algorithm": "pressure_diagonal_fusion_v1",
+  "positive_replay": {
+    "source": "../py/ly",
+    "pressure_diagonal": ["FR", "RL"],
+    "pressure_state": "both confirmed healthy; RR evaluated from wheel speed",
+    "target_wheel": "RR",
+    "samples": 8,
+    "detected": 8,
+    "wrong_wheel_or_pre_event_alarms": 0,
+    "mean_confirmation_delay_s": 0.828,
+    "max_confirmation_delay_s": 0.85,
+    "cases": [
+      {
+        "file": "20260116_yuan_baotai_rr100_45kmh.txt",
+        "event_time_s": 402.16,
+        "first_alarm_time_s": 402.99,
+        "estimated_onset_time_s": 402.20,
+        "confirmation_delay_s": 0.83
+      },
+      {
+        "file": "202601211_yuan_55_haimalu_rr100_blowout.txt",
+        "event_time_s": 429.68,
+        "first_alarm_time_s": 430.48,
+        "estimated_onset_time_s": 429.69,
+        "confirmation_delay_s": 0.80
+      },
+      {
+        "file": "202601211_yuan_55_haimalu_rr100_blowout_2.txt",
+        "event_time_s": 436.08,
+        "first_alarm_time_s": 436.91,
+        "estimated_onset_time_s": 436.12,
+        "confirmation_delay_s": 0.83
+      },
+      {
+        "file": "20260122_yuan_75_majisi_rr100_blowout.txt",
+        "event_time_s": 352.52,
+        "first_alarm_time_s": 353.36,
+        "estimated_onset_time_s": 352.57,
+        "confirmation_delay_s": 0.84
+      },
+      {
+        "file": "20260122_yuan_85_majisi_rr100_blowout.txt",
+        "event_time_s": 336.66,
+        "first_alarm_time_s": 337.50,
+        "estimated_onset_time_s": 336.71,
+        "confirmation_delay_s": 0.84
+      },
+      {
+        "file": "20260122_yuan_95_majisi_rr100_blowout.txt",
+        "event_time_s": 330.84,
+        "first_alarm_time_s": 331.66,
+        "estimated_onset_time_s": 330.87,
+        "confirmation_delay_s": 0.82
+      },
+      {
+        "file": "20260122_yuan_65_majisiwandao_rr100_blowout.txt",
+        "event_time_s": 385.84,
+        "first_alarm_time_s": 386.65,
+        "estimated_onset_time_s": 385.86,
+        "confirmation_delay_s": 0.81
+      },
+      {
+        "file": "20260122_yuan_75_majisiwandao_rr100_blowout.txt",
+        "event_time_s": 374.30,
+        "first_alarm_time_s": 375.15,
+        "estimated_onset_time_s": 374.36,
+        "confirmation_delay_s": 0.85
+      }
+    ]
+  },
+  "normal_road_replay": {
+    "source": "RobustData individual plaintext exports",
+    "cases": 37,
+    "frames": 8922100,
+    "duration_hours": 24.78,
+    "layouts": {
+      "pressure_FL_RR__speed_FR_RL": {
+        "false_alarm_cases": 0,
+        "false_alarm_wheels": 0
+      },
+      "pressure_FR_RL__speed_FL_RR": {
+        "false_alarm_cases": 0,
+        "false_alarm_wheels": 0
+      }
+    }
+  },
+  "multi_wheel_validation": {
+    "type": "synthetic regression",
+    "covered": [
+      "either pressure diagonal is auto-discovered",
+      "each of four wheel positions",
+      "two simultaneous speed-only diagonal blowouts",
+      "two sequential speed-only diagonal blowouts",
+      "pressure alarm suspends contaminated speed reference"
+    ]
+  },
+  "important": "Thresholds were selected after inspecting the same ly and RobustData records. This is a development replay, not an independent locked-parameter validation. Real positive data only covers RR; FL/FR/RL and multi-wheel positives require new physical tests."
+}

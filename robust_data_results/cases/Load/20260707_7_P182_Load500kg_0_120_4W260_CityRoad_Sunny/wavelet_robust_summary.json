@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "input_file": "/home/zich/haar/RobustData/Load/20260707_7_P182_Load500kg_0_120_4W260_CityRoad_Sunny.txt",
+  "wheel_speed_csv": "/home/zich/haar/robust_data_results/cases/Load/20260707_7_P182_Load500kg_0_120_4W260_CityRoad_Sunny/wheel_speed_raw_vs_corrected.csv",
+  "results": [
+    {
+      "algorithm": "hard",
+      "frames": 208900,
+      "valid_speed_frames": 160658,
+      "duration_s": 2088.99,
+      "false_alarm": true,
+      "alarm_wheels": [
+        "FL",
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "alarm_events": 382,
+      "alarm_frames": 355342,
+      "confirmed_false_alarm": true,
+      "confirmed_alarm_wheels": [
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "confirmation_events": 3,
+      "per_wheel": {
+        "FL": {
+          "alarm_events": 173,
+          "alarm_frames": 1498,
+          "confirmation_events": 0,
+          "first_alarm_time_s": 120.32,
+          "first_estimated_onset_time_s": 120.23
+        },
+        "FR": {
+          "alarm_events": 40,
+          "alarm_frames": 125323,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 89.66,
+          "first_estimated_onset_time_s": 89.57
+        },
+        "RL": {
+          "alarm_events": 168,
+          "alarm_frames": 21907,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 68.54,
+          "first_estimated_onset_time_s": 68.45
+        },
+        "RR": {
+          "alarm_events": 1,
+          "alarm_frames": 206614,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 22.86,
+          "first_estimated_onset_time_s": 22.77
+        }
+      },
+      "config": {
+        "sample_rate_hz": 100.0,
+        "reference_mode": "opposite_diagonal",
+        "smooth_window": 5,
+        "haar_half_window": 5,
+        "baseline_window": 300,
+        "baseline_min_samples": 100,
+        "min_avg_speed": 20.0,
+        "min_rise_coefficient": 0.0055,
+        "min_peak_gain": 0.004,
+        "max_peak_gain": 0.02,
+        "min_fall_coefficient": 0.0033,
+        "max_fall_coefficient": 0.012,
+        "min_valley_gain": 0.0,
+        "fall_min_frames": 4,
+        "fall_max_frames": 24,
+        "confirm_frames": 30,
+        "min_steady_gain": 0.006,
+        "steady_tail_frames": 10,
+        "min_tail_gain": 0.0085,
+        "max_steady_above_peak": 0.001,
+        "clear_baseline_after_invalid_frames": 50,
+        "target_wheels": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "algorithm": "evidence",
+      "frames": 208900,
+      "valid_speed_frames": 160658,
+      "duration_s": 2088.99,
+      "false_alarm": true,
+      "alarm_wheels": [
+        "FL",
+        "FR",
+        "RL",
+        "RR"
+      ],
+      "alarm_events": 109,
+      "alarm_frames": 431546,
+      "confirmed_false_alarm": true,
+      "confirmed_alarm_wheels": [
+        "FL",
+        "FR",
+        "RR"
+      ],
+      "confirmation_events": 3,
+      "per_wheel": {
+        "FL": {
+          "alarm_events": 13,
+          "alarm_frames": 101717,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 141.83,
+          "first_estimated_onset_time_s": 141.74
+        },
+        "FR": {
+          "alarm_events": 15,
+          "alarm_frames": 125901,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 118.49,
+          "first_estimated_onset_time_s": 118.4
+        },
+        "RL": {
+          "alarm_events": 80,
+          "alarm_frames": 5956,
+          "confirmation_events": 0,
+          "first_alarm_time_s": 132.5,
+          "first_estimated_onset_time_s": 132.41
+        },
+        "RR": {
+          "alarm_events": 1,
+          "alarm_frames": 197972,
+          "confirmation_events": 1,
+          "first_alarm_time_s": 109.28,
+          "first_estimated_onset_time_s": 109.19
+        }
+      },
+      "config": {
+        "sample_rate_hz": 100.0,
+        "reference_mode": "opposite_diagonal",
+        "smooth_window": 5,
+        "haar_half_window": 5,
+        "slope_half_window": 3,
+        "baseline_window": 300,
+        "baseline_min_samples": 100,
+        "noise_window": 200,
+        "min_avg_speed": 20.0,
+        "haar_scale": 0.0032,
+        "slope_scale": 0.0024,
+        "gain_scale": 0.0045,
+        "drawdown_scale": 0.0028,
+        "min_pullback_gain": 0.0015,
+        "elevated_gain": 0.0045,
+        "strong_elevated_gain": 0.0075,
+        "rise_decay": 0.92,
+        "pullback_decay": 0.94,
+        "persistence_decay": 0.985,
+        "rise_candidate_score": 2.2,
+        "min_trigger_haar": 0.0012,
+        "pullback_confirm_score": 2.8,
+        "persistence_confirm_score": 12.0,
+        "min_candidate_gain": 0.006,
+        "min_trigger_slope": 0.0033,
+        "max_physical_gain": 0.035,
+        "candidate_timeout_frames": 80,
+        "reset_below_frames": 20,
+        "clear_baseline_after_invalid_frames": 50,
+        "target_wheels": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  ]
+}

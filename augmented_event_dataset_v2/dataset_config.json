@@ -1,0 +1,33 @@
+{
+  "labels": "/home/zich/py/wheel_cog_outputs/blowout_manual_labeling_package/labeling_package/event_time_labels.csv",
+  "batch_summary": "/home/zich/py/wheel_cog_outputs/fast_alarm_batch_outputs/fast_alarm_batch_summary.csv",
+  "output_dir": "/home/zich/haar/augmented_event_dataset_v2",
+  "series": "corrected",
+  "pre_s": 40.0,
+  "post_s": 10.0,
+  "aug_per_event": 50,
+  "normal_per_event": 10,
+  "normal_guard_s": 10.0,
+  "event_jitter_s": 0.5,
+  "time_scale_min": 0.95,
+  "time_scale_max": 1.05,
+  "speed_scale_min": 0.95,
+  "speed_scale_max": 1.05,
+  "noise_gain_min": 0.1,
+  "noise_gain_max": 0.5,
+  "dropout_probability": 0.3,
+  "max_dropout_samples": 3,
+  "event_target_wheel": "RR",
+  "sensor_wheels": [
+    "FL",
+    "RR"
+  ],
+  "sensor_delay_s": 0.3,
+  "seed": 20260713,
+  "overwrite": false,
+  "noise_model": "contiguous_correlated_residual_v2",
+  "sample_count": 488,
+  "event_sample_count": 408,
+  "normal_sample_count": 80,
+  "important": "Split by source_event_id before training. Never place samples with the same source_event_id in both train and test."
+}
