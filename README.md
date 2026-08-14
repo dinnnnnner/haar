@@ -74,6 +74,21 @@ python3 -m wavelet_shape_blowout_detector.pressure_fusion_cli \
 上线前仍需保留新道路、新轮位数据作锁定参数后的独立验证。
 逐条回放数值保存在 `pressure_fusion_evaluation_summary.json`。
 
+### 胎压融合算法显示台
+
+显示台用于排查算法进入疑似状态的具体片段。它会完整回放所选记录，把内部
+`candidate` 区间按轮位列在左侧，并区分最终确认和被排除的候选；右侧 Plotly
+图同步显示四轮校正轮速、逐轮/对角增益、上升沿证据和锁存报警。点击任一疑似
+段即可跳到附近窗口，图表支持拖动、滚轮缩放、双击复位和底部范围条。
+
+```bash
+haar/bin/python -m wavelet_shape_blowout_detector.serve_pressure_fusion_display \
+  --port 8771
+```
+
+浏览器访问 `http://127.0.0.1:8771`。首次打开长记录时需要完整扫描一次，结果会
+缓存在内存中；单次曲线窗口默认最多 120 秒，可通过 `--max-window-s` 调整。
+
 该算法专门提取真实样本中的三段形态：爆胎轮相对其他轮先加快、约
 0.1 秒后小幅回落、随后保持偏快。
 
