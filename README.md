@@ -2,6 +2,9 @@
 
 ## 胎压对角融合四轮检测（推荐低误报方案）
 
+完整的接口契约、数学模型、状态机、安全降级、验证证据和量产准入要求见
+[`docs/pressure_fusion_detector_algorithm_spec.md`](docs/pressure_fusion_detector_algorithm_spec.md)。
+
 `pressure_fusion_detector.py` 面向以下车辆配置：四轮都有轮速，且恰好一组
 对角轮有逐轮胎压爆胎信号，但软件预先不知道是 `FL+RR` 还是 `FR+RL`。
 输入胎压信号使用三态语义：
