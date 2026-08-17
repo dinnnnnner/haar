@@ -197,20 +197,20 @@ PressureFusionFrame(
 
 定义两个合法对角：
 
-\[
+```math
 \mathcal{D}_0=\{FL,RR\}, \qquad \mathcal{D}_1=\{FR,RL\}
-\]
+```
 
-当前帧中非 `None` 胎压项的索引集合记为 \(\mathcal{S}\)。首次满足
-\(\mathcal{S}=\mathcal{D}_0\) 或 \(\mathcal{S}=\mathcal{D}_1\) 时：
+当前帧中非 `None` 胎压项的索引集合记为 $\mathcal{S}$。首次满足
+$\mathcal{S}=\mathcal{D}_0$ 或 $\mathcal{S}=\mathcal{D}_1$ 时：
 
-\[
+```math
 sensor\_diagonal=\mathcal{S}
-\]
+```
 
-\[
+```math
 speed\_diagonal=(\mathcal{D}_0\cup\mathcal{D}_1)\setminus\mathcal{S}
-\]
+```
 
 布局识别结果保持到显式复位。运行中出现另一条对角或非对角的部分信号时，接口
 抛出异常，不执行静默重映射。
@@ -219,11 +219,11 @@ speed\_diagonal=(\mathcal{D}_0\cup\mathcal{D}_1)\setminus\mathcal{S}
 
 每轮保存上一帧胎压激活状态：
 
-\[
+```math
 active_i(t)=[pressure_i(t)=True]
-\]
+```
 
-当 \(active_i(t)=1\) 且 \(active_i(t-1)=0\) 时：
+当 $active_i(t)=1$ 且 $active_i(t-1)=0$ 时：
 
 1. 将该轮 `blowout_alarm` 置为真；
 2. 将来源设为 `pressure`；
@@ -237,31 +237,31 @@ active_i(t)=[pressure_i(t)=True]
 
 令轮速幅值为：
 
-\[
+```math
 v_i=|wheel_i|
-\]
+```
 
 基本有效性条件为：
 
-\[
+```math
 speed\_valid = [\min_i(v_i)>10^{-9}]
 \land
 \left[\frac{1}{4}\sum_i v_i \geq min\_avg\_speed\right]
-\]
+```
 
 参考健康条件为：
 
-\[
+```math
 reference\_healthy =
 \bigwedge_{j\in sensor\_diagonal}
 ([pressure_j=False]\land[alarm_j=False])
-\]
+```
 
 只有满足下式时才执行轮速检测：
 
-\[
+```math
 speed\_detection\_available = speed\_valid \land reference\_healthy
-\]
+```
 
 这里采用严格健康语义：`None` 不是“未报故障”，而是“无法证明健康”。
 
@@ -269,34 +269,34 @@ speed\_detection\_available = speed\_valid \land reference\_healthy
 
 对有效轮速取自然对数：
 
-\[
+```math
 x_i=\ln(v_i)
-\]
+```
 
-设胎压参考对角为 \(S=\{s_1,s_2\}\)，轮速检测对角为
-\(V=\{u_1,u_2\}\)。参考对角的对数均值为：
+设胎压参考对角为 $S=\{s_1,s_2\}$，轮速检测对角为
+$V=\{u_1,u_2\}$。参考对角的对数均值为：
 
-\[
+```math
 \bar{x}_S=\frac{x_{s_1}+x_{s_2}}{2}
-\]
+```
 
 每个轮速目标轮的逐轮原始特征为：
 
-\[
+```math
 r_i=x_i-\bar{x}_S, \qquad i\in V
-\]
+```
 
 对角原始特征为：
 
-\[
+```math
 q=x_{u_1}+x_{u_2}-x_{s_1}-x_{s_2}
-\]
+```
 
 并且：
 
-\[
+```math
 q=r_{u_1}+r_{u_2}
-\]
+```
 
 逐轮特征负责定位目标轮，对角特征负责提供跨轮一致性。对数差可以解释为相对
 比例变化；当变化较小时，`0.006` 约等于 `0.6%`。
@@ -307,10 +307,10 @@ q=r_{u_1}+r_{u_2}
 
 ### 8.5 稳健平滑
 
-逐轮特征和对角特征使用相同的两级因果平滑。设窗口长度为 \(N_s\)：
+逐轮特征和对角特征使用相同的两级因果平滑。设窗口长度为 $N_s$：
 
-1. 对最近最多 \(N_s\) 个原始值取中位数；
-2. 对最近最多 \(N_s\) 个中位数结果取算术平均。
+1. 对最近最多 $N_s$ 个原始值取中位数；
+2. 对最近最多 $N_s$ 个中位数结果取算术平均。
 
 默认 `smooth_window=5`。该组合用于抑制单点脉冲，同时保留持续阶跃。启动初期窗口
 未满时使用已有样本计算，因此系统仍必须依赖后续基线预热门控，不能把未满窗口的
@@ -327,24 +327,24 @@ q=r_{u_1}+r_{u_2}
 
 逐轮增益和对角增益定义为：
 
-\[
+```math
 g_i=\widetilde{r_i}-median(B_i)
-\]
+```
 
-\[
+```math
 g_D=\widetilde{q}-median(B_D)
-\]
+```
 
 候选存在期间或轮速对角已有锁存报警时停止更新基线，避免异常被吸收到正常模型。
 
 ### 8.7 因果边沿
 
-设 `edge_half_window=h=6`，对最近 \(2h\) 个增益计算：
+设 `edge_half_window=h=6`，对最近 $2h$ 个增益计算：
 
-\[
+```math
 edge(t)=\frac{1}{h}\sum_{k=0}^{h-1}g(t-k)
 -\frac{1}{h}\sum_{k=h}^{2h-1}g(t-k)
-\]
+```
 
 它表示“最近 6 帧均值”减去“此前 6 帧均值”。100 Hz 下每半窗为 60 ms，完整
 比较跨度为 120 ms。逐轮和对角各自计算边沿。
@@ -353,13 +353,13 @@ edge(t)=\frac{1}{h}\sum_{k=0}^{h-1}g(t-k)
 
 轮速检测对角中的每个轮独立维护候选。当以下条件同时成立时建立该轮候选：
 
-\[
+```math
 edge_i \geq 0.0058
-\]
+```
 
-\[
+```math
 edge_D \geq 0.0058
-\]
+```
 
 候选保存：
 
@@ -372,9 +372,9 @@ edge_D \geq 0.0058
 
 起点相对候选建立帧回推：
 
-\[
+```math
 delay=(smooth\_window-1)+edge\_half\_window=10\ frames
-\]
+```
 
 默认配置下回推约 0.1 秒。该值是滤波群延迟的工程估算，不是传感器级真实破裂
 时刻的保证值。
@@ -464,7 +464,7 @@ stateDiagram-v2
 | `candidate_drop_limit` | -0.0040 | 约 -0.40% | 候选提前撤销下限 |
 | `clear_after_invalid_frames` | 50 | 0.50 s | 连续无效轮速后清历史 |
 
-比例列使用 \(e^x-1\) 换算或小量近似，仅用于解释。正式比较始终使用代码中的
+比例列使用 $e^x-1$ 换算或小量近似，仅用于解释。正式比较始终使用代码中的
 对数阈值。
 
 ## 10. 降级与故障处理

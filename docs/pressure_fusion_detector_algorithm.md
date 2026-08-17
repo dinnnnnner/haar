@@ -208,30 +208,30 @@ candidate[i] = None
 
 四轮先取绝对值：
 
-\[
+```math
 v_i=|wheel_i|
-\]
+```
 
 然后判断：
 
-\[
+```math
 speed\_valid=
 [\min_i(v_i)>10^{-9}]
 \land
 [mean(v_i)\ge 20]
-\]
+```
 
 `20` 的单位与输入轮速单位一致，当前代码不进行单位换算。
 
 ### 6.2 参考健康条件
 
-设胎压对角为 \(S\)：
+设胎压对角为 $S$：
 
-\[
+```math
 reference\_healthy=
 \bigwedge_{i\in S}
 ([pressure_i=False]\land[alarm_i=False])
-\]
+```
 
 真值示例：
 
@@ -249,40 +249,40 @@ reference\_healthy=
 
 假设本车胎压对角是 FR+RL，轮速对角是 FL+RR。定义：
 
-\[
+```math
 x_{FL}=\ln(v_{FL}),\quad x_{FR}=\ln(v_{FR}),\quad
 x_{RL}=\ln(v_{RL}),\quad x_{RR}=\ln(v_{RR})
-\]
+```
 
 胎压参考均值：
 
-\[
+```math
 \bar{x}_S=\frac{x_{FR}+x_{RL}}{2}
-\]
+```
 
 ### 7.1 逐轮特征
 
-\[
+```math
 r_{FL}=x_{FL}-\bar{x}_S
-\]
+```
 
-\[
+```math
 r_{RR}=x_{RR}-\bar{x}_S
-\]
+```
 
 `r_FL` 和 `r_RR` 分开计算，用于定位具体异常轮。
 
 ### 7.2 对角特征
 
-\[
+```math
 q=x_{FL}+x_{RR}-x_{FR}-x_{RL}
-\]
+```
 
 它也等于：
 
-\[
+```math
 q=r_{FL}+r_{RR}
-\]
+```
 
 逐轮特征过门限但对角特征不过门限时，不建立候选。
 
@@ -290,23 +290,23 @@ q=r_{FL}+r_{RR}
 
 对数差把乘法比例变成加法：
 
-\[
+```math
 \ln(v_{target})-\ln(v_{reference})
 =\ln\left(\frac{v_{target}}{v_{reference}}\right)
-\]
+```
 
 小变化下：
 
-\[
+```math
 \ln(1+p)\approx p
-\]
+```
 
 因此 `0.0058` 可近似解释为 `0.58%` 相对变化，同时不会依赖当前轮速的绝对数值。
 
 ### 7.4 对角残差如何抵消常见运动
 
-把每个轮的对数轮速分解成共同项 \(c\)、左右项 \(l/r\)、前后项 \(f/b\) 和故障项
-\(e_i\)。两条对角都各含一个左轮、右轮、前轮和后轮：
+把每个轮的对数轮速分解成共同项 $c$、左右项 $l/r$、前后项 $f/b$ 和故障项
+$e_i$。两条对角都各含一个左轮、右轮、前轮和后轮：
 
 ```text
 FL + RR：左 + 右，前 + 后
@@ -315,29 +315,29 @@ FR + RL：右 + 左，前 + 后
 
 所以在一阶对称近似下：
 
-\[
+```math
 (x_{FL}+x_{RR})-(x_{FR}+x_{RL})
 \approx e_{FL}+e_{RR}-e_{FR}-e_{RL}
-\]
+```
 
 共同加减速、左右轮差和前后轴差近似抵消。极限转向、打滑和控制系统介入不一定
 满足该近似，因此后面还需要共同速度瞬变门控。
 
 ## 8. 两级平滑
 
-每个逐轮特征和对角特征都有独立历史。对新输入值 \(z_t\)：
+每个逐轮特征和对角特征都有独立历史。对新输入值 $z_t$：
 
 第一层取最近 5 帧中位数：
 
-\[
+```math
 m_t=median(z_{t-4},\ldots,z_t)
-\]
+```
 
 第二层对最近 5 个中位数取均值：
 
-\[
+```math
 \widetilde{z}_t=mean(m_{t-4},\ldots,m_t)
-\]
+```
 
 代码在窗口未满时使用已有样本，但报警仍会被基线预热条件阻止。中值层抑制孤立
 毛刺，均值层减小量化噪声。
@@ -347,23 +347,23 @@ m_t=median(z_{t-4},\ldots,z_t)
 逐轮平滑特征和对角平滑特征各维护一个最长 500 帧的队列。至少积累 200 帧后，
 基线才有效：
 
-\[
+```math
 b_i=median(B_i)
-\]
+```
 
-\[
+```math
 b_D=median(B_D)
-\]
+```
 
 基线中位数每 10 帧重新计算一次。最终用于检测的增益为：
 
-\[
+```math
 g_i=\widetilde{r_i}-b_i
-\]
+```
 
-\[
+```math
 g_D=\widetilde{q}-b_D
-\]
+```
 
 基线更新条件是：
 
@@ -378,11 +378,11 @@ not any(candidates) and not any(speed_diagonal_alarms)
 
 边沿窗口包含最近 12 个增益，前后各 6 帧：
 
-\[
+```math
 edge_t=
 mean(g_{t-5},\ldots,g_t)
 -mean(g_{t-11},\ldots,g_{t-6})
-\]
+```
 
 100 Hz 下，它比较最近 60 ms 和此前 60 ms 的平均水平。只有收满 12 个有效增益后
 才产生边沿，之前输出 `NaN`。
@@ -406,11 +406,11 @@ CANDIDATE
 
 ### 11.1 建立条件
 
-对目标轮 \(i\)：
+对目标轮 $i$：
 
-\[
+```math
 edge_i\ge0.0058 \land edge_D\ge0.0058
-\]
+```
 
 建立候选时保存当前逐轮增益、对角增益、同组另一轮增益和共同对数速度。
 
@@ -418,9 +418,9 @@ edge_i\ge0.0058 \land edge_D\ge0.0058
 
 候选建立帧不是事件起点。算法回推：
 
-\[
+```math
 delay=(5-1)+6=10\ frames=0.1\ s
-\]
+```
 
 ```python
 estimated_onset_index = current_index - 10
@@ -499,13 +499,13 @@ confirmed = (
 
 共同速度量是：
 
-\[
+```math
 c_t=\frac{1}{4}\sum_i\ln(v_i)
 =\ln\left(\sqrt[4]{\prod_i v_i}\right)
-\]
+```
 
 `max(C)-min(C) <= 0.050` 等价于候选期四轮几何平均速度的最大/最小比不超过
-\(e^{0.05}\approx1.0513\)，即约 5.13%。
+$e^{0.05}\approx1.0513$，即约 5.13%。
 
 确认通过时：
 
@@ -540,17 +540,17 @@ RR = 50.55
 
 忽略滤波过渡时：
 
-\[
+```math
 g_{RR}\approx\ln(50.55/50)=0.01094
-\]
+```
 
-\[
+```math
 g_{FL}\approx\ln(50/50)=0
-\]
+```
 
-\[
+```math
 g_D\approx\ln(50\times50.55/(50\times50))=0.01094
-\]
+```
 
 结果：
 
