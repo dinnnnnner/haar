@@ -5,7 +5,7 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
-from typing import Sequence
+from typing import Iterable, Sequence
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -15,6 +15,7 @@ from .pressure_fusion_detector import (
     PressureFusionBlowoutDetector,
     PressureFusionConfig,
     PressureFusionFrame,
+    PressureFusionResult,
 )
 
 
@@ -60,6 +61,40 @@ class WindowData:
     diagonal_edge: list[float | None]
     candidates: list[list[bool]]
     alarms: list[list[bool]]
+
+
+def window_data_from_results(
+    results: Iterable[PressureFusionResult],
+) -> WindowData:
+    """Convert in-memory detector output into data accepted by ``build_figure``."""
+
+    data = WindowData(
+        [],
+        [[] for _ in range(4)],
+        [[] for _ in range(4)],
+        [[] for _ in range(4)],
+        [],
+        [],
+        [[] for _ in range(4)],
+        [[] for _ in range(4)],
+    )
+    for result in results:
+        data.times.append(result.t_sec)
+        for index in range(4):
+            data.wheels[index].append(result.wheels[index])
+            data.gains[index].append(
+                _finite_percent(result.individual_gains[index])
+            )
+            data.edges[index].append(
+                _finite_percent(result.individual_edges[index])
+            )
+            data.candidates[index].append(result.candidates[index])
+            data.alarms[index].append(result.blowout_alarms[index])
+        data.diagonal_gain.append(_finite_percent(result.diagonal_gain))
+        data.diagonal_edge.append(_finite_percent(result.diagonal_edge))
+    if not data.times:
+        raise ValueError("检测结果为空")
+    return data
 
 
 def _finite_percent(value: float) -> float | None:
@@ -182,16 +217,7 @@ def analyze_window(
     event_time_s: float | None = None,
 ) -> WindowData:
     detector = PressureFusionBlowoutDetector(cfg)
-    data = WindowData(
-        [],
-        [[] for _ in range(4)],
-        [[] for _ in range(4)],
-        [[] for _ in range(4)],
-        [],
-        [],
-        [[] for _ in range(4)],
-        [[] for _ in range(4)],
-    )
+    results = []
     with input_path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.DictReader(handle):
             t_sec = float(row["time_s"])
@@ -207,22 +233,10 @@ def analyze_window(
             )
             if t_sec < start_s:
                 continue
-            data.times.append(t_sec)
-            for index in range(4):
-                data.wheels[index].append(wheels[index])
-                data.gains[index].append(
-                    _finite_percent(result.individual_gains[index])
-                )
-                data.edges[index].append(
-                    _finite_percent(result.individual_edges[index])
-                )
-                data.candidates[index].append(result.candidates[index])
-                data.alarms[index].append(result.blowout_alarms[index])
-            data.diagonal_gain.append(_finite_percent(result.diagonal_gain))
-            data.diagonal_edge.append(_finite_percent(result.diagonal_edge))
-    if not data.times:
+            results.append(result)
+    if not results:
         raise ValueError("所选窗口内没有数据")
-    return data
+    return window_data_from_results(results)
 
 
 def build_figure(

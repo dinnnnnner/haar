@@ -5,8 +5,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .pressure_fusion_detector import PressureFusionConfig
-from .pressure_fusion_display import analyze_window, build_figure, scan_csv
+from .pressure_fusion_detector import (
+    PressureFusionBlowoutDetector,
+    PressureFusionConfig,
+    PressureFusionFrame,
+)
+from .pressure_fusion_display import (
+    analyze_window,
+    build_figure,
+    scan_csv,
+    window_data_from_results,
+)
 
 
 class PressureFusionDisplayTests(unittest.TestCase):
@@ -53,6 +62,25 @@ class PressureFusionDisplayTests(unittest.TestCase):
         self.assertTrue(figure.layout.xaxis4.rangeslider.visible)
         self.assertTrue(any(trace.name == "FL" for trace in figure.data))
         self.assertTrue(any(trace.name == "FL 疑似" for trace in figure.data))
+
+    def test_builds_window_data_from_in_memory_results(self) -> None:
+        detector = PressureFusionBlowoutDetector(self.cfg)
+        results = [
+            detector.push(
+                PressureFusionFrame.from_sequences(
+                    index * 0.01,
+                    [50.0, 50.0, 50.0, 50.0],
+                    [None, False, False, None],
+                )
+            )
+            for index in range(10)
+        ]
+
+        data = window_data_from_results(results)
+
+        self.assertEqual(data.times, [index * 0.01 for index in range(10)])
+        self.assertEqual(data.wheels[3], [50.0] * 10)
+        self.assertEqual(data.alarms[3], [False] * 10)
 
 
 if __name__ == "__main__":

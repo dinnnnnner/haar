@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "evaluation_date": "2026-08-17",
+  "algorithm": "online_factor_covariance_cusum_v1",
+  "inputs": ["time_s", "FL_speed", "FR_speed", "RL_speed", "RR_speed"],
+  "pressure_sensor_input": false,
+  "real_positive_replay": {
+    "samples": 8,
+    "physical_target_wheels": ["RR"],
+    "detected": 8,
+    "wrong_wheel_or_pre_event_alarms": 0,
+    "mean_confirmation_delay_s": 0.83375,
+    "max_confirmation_delay_s": 0.86,
+    "confirmation_delays_s": [0.84, 0.81, 0.84, 0.85, 0.84, 0.82, 0.81, 0.86]
+  },
+  "augmented_replay": {
+    "samples": 488,
+    "event_samples": 408,
+    "events_detected_within_2s": 408,
+    "event_misses": 0,
+    "pre_event_or_wrong_wheel_alarm_samples": 0,
+    "normal_samples": 80,
+    "normal_false_alarm_samples": 0,
+    "mean_confirmation_delay_s": 0.833790245,
+    "max_confirmation_delay_s": 0.99206019
+  },
+  "real_normal_road_replay": {
+    "cases": 37,
+    "frames": 8922100,
+    "duration_hours": 24.784,
+    "false_alarm_cases": 0,
+    "false_alarm_events": 0,
+    "candidate_entries_before_confirmation_filters": 2611
+  },
+  "calibration_history": {
+    "initial_real_normal_false_alarm_cases": 3,
+    "initial_false_alarm_case_ids": ["R011", "R017", "R023"],
+    "added_control": "at least 95% of the confirmation tail must retain level-isolation z >= 1.0",
+    "post_control_false_alarm_cases": 0
+  },
+  "synthetic_regression": {
+    "tests": 6,
+    "covered": [
+      "each single wheel factor fingerprint",
+      "common acceleration and first-order steering neutrality",
+      "same-axle change rejection by wheel isolation",
+      "risk leadership and latched alarm",
+      "low-speed invalidation and re-warm",
+      "reset and input validation"
+    ]
+  },
+  "limitations": [
+    "development replay, not an independent locked-parameter blind test",
+    "real positive samples cover RR only",
+    "risk score is evidence strength, not a calibrated probability",
+    "equal four-wheel changes remain unobservable from relative wheel speed"
+  ]
+}

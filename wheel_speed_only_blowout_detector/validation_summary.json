@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "evaluation_date": "2026-08-17",
+  "algorithm": "wheel_speed_only_dual_spatial_evidence_v1",
+  "inputs": ["time_s", "FL_speed", "FR_speed", "RL_speed", "RR_speed"],
+  "pressure_sensor_input": false,
+  "real_positive_replay": {
+    "samples": 8,
+    "physical_target_wheels": ["RR"],
+    "detected": 8,
+    "wrong_wheel_or_pre_event_alarms": 0,
+    "mean_confirmation_delay_s": 0.8275,
+    "max_confirmation_delay_s": 0.85,
+    "cases": [
+      {"sample_id": "E01", "confirmation_delay_s": 0.83},
+      {"sample_id": "E02", "confirmation_delay_s": 0.80},
+      {"sample_id": "E03", "confirmation_delay_s": 0.83},
+      {"sample_id": "E04", "confirmation_delay_s": 0.84},
+      {"sample_id": "E05", "confirmation_delay_s": 0.84},
+      {"sample_id": "E06", "confirmation_delay_s": 0.82},
+      {"sample_id": "E07", "confirmation_delay_s": 0.81},
+      {"sample_id": "E08", "confirmation_delay_s": 0.85}
+    ]
+  },
+  "augmented_replay": {
+    "samples": 488,
+    "event_samples": 408,
+    "events_detected_within_2s": 407,
+    "event_misses": 1,
+    "pre_event_or_wrong_wheel_alarm_samples": 0,
+    "normal_samples": 80,
+    "normal_false_alarm_samples": 0,
+    "mean_confirmation_delay_s": 0.8294,
+    "max_confirmation_delay_s": 0.8677,
+    "missed_samples": ["E02_event_024"]
+  },
+  "real_normal_road_replay": {
+    "cases": 37,
+    "frames": 8922100,
+    "duration_hours": 24.784,
+    "false_alarm_cases": 0,
+    "false_alarm_events": 0
+  },
+  "synthetic_regression": {
+    "tests": 8,
+    "covered": [
+      "each single wheel position",
+      "two simultaneous wheels on either diagonal",
+      "two sequential wheels on one diagonal",
+      "common acceleration and first-order steering rejection",
+      "same-axle step rejection",
+      "contaminated-reference suppression",
+      "low-speed invalidation and latched alarm",
+      "reset and input validation"
+    ]
+  },
+  "limitations": [
+    "development replay, not an independent locked-parameter blind test",
+    "real positive samples cover RR only",
+    "equal four-wheel changes are unobservable from relative wheel speed",
+    "equal adjacent-wheel changes are conservatively rejected"
+  ]
+}
