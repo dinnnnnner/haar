@@ -72,10 +72,29 @@ python3 -m quant_wheel_blowout_detector.cli \
 `wheel3_corrected_rad_s`。其他列名可通过 `--time-column` 和
 `--wheel-columns FL FR RL RR` 指定。
 
+## 交互式 Display
+
+单条 CSV 可生成量化算法的完整证据链展示：四轮轮速、Hadamard 三因子残差、
+逐轮物理投影、冲击/持续匹配 Z 分、轮位隔离度、风险分，以及候选和锁存报警
+状态。图表支持拖动、滚轮缩放、统一悬浮提示和底部范围条。
+
+```bash
+haar/bin/python -m quant_wheel_blowout_detector.display \
+  --input augmented_event_dataset_v2/samples/E01_event_000.csv \
+  --event-time 40.0 --window-before 5 --window-after 5 \
+  --output quant_display.html
+```
+
+不传 `--event-time` 时显示完整记录。自定义 CSV 列名可使用 `--time-column` 和
+`--wheel-columns FL FR RL RR`；检测器仍会回放显示窗口之前的所有帧，以保证
+窗口左边界处的在线基线和状态与完整回放一致。
+
 ## 测试
 
 ```bash
-python3 -m unittest quant_wheel_blowout_detector.test_detector -v
+haar/bin/python -m unittest \
+  quant_wheel_blowout_detector.test_detector \
+  quant_wheel_blowout_detector.test_display -v
 ```
 
 ## 当前开发回放
