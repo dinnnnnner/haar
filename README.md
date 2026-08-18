@@ -1,5 +1,23 @@
 # 小波形态爆胎检测器
 
+## 两套纯轮速算法
+
+仓库同时保留两套只读取四轮校正轮速的独立算法：
+
+- `wheel_speed_only_blowout_detector`：双空间物理硬门限，支持平稳工况下 55 帧
+  早确认，否则保留 70 帧复核；
+- `quant_wheel_blowout_detector`：Hadamard 三因子、在线协方差、匹配滤波和
+  CUSUM 风险分，默认 55 帧确认并排除超过 2.5% 的轮滑型物理投影。
+
+两套算法优化前后的统一评估入口为：
+
+```bash
+python3 evaluate_speed_algorithms.py --jobs 4
+```
+
+逐样本、逐正常道路和汇总结果位于 `speed_algorithm_evaluation/`。这些结果是
+同源开发回放，不是锁参后的独立盲测。
+
 ## 胎压对角融合四轮检测（推荐低误报方案）
 
 算法资料分为两份：

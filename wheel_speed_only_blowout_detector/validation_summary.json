@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "evaluation_date": "2026-08-17",
-  "algorithm": "wheel_speed_only_dual_spatial_evidence_v1",
+  "evaluation_date": "2026-08-18",
+  "algorithm": "wheel_speed_only_dual_spatial_evidence_v2",
   "inputs": ["time_s", "FL_speed", "FR_speed", "RL_speed", "RR_speed"],
   "pressure_sensor_input": false,
   "real_positive_replay": {
@@ -9,40 +9,48 @@
     "physical_target_wheels": ["RR"],
     "detected": 8,
     "wrong_wheel_or_pre_event_alarms": 0,
-    "mean_confirmation_delay_s": 0.8275,
-    "max_confirmation_delay_s": 0.85,
+    "mean_confirmation_delay_s": 0.6775,
+    "max_confirmation_delay_s": 0.70,
     "cases": [
-      {"sample_id": "E01", "confirmation_delay_s": 0.83},
-      {"sample_id": "E02", "confirmation_delay_s": 0.80},
-      {"sample_id": "E03", "confirmation_delay_s": 0.83},
-      {"sample_id": "E04", "confirmation_delay_s": 0.84},
-      {"sample_id": "E05", "confirmation_delay_s": 0.84},
-      {"sample_id": "E06", "confirmation_delay_s": 0.82},
-      {"sample_id": "E07", "confirmation_delay_s": 0.81},
-      {"sample_id": "E08", "confirmation_delay_s": 0.85}
+      {"sample_id": "E01", "confirmation_delay_s": 0.68},
+      {"sample_id": "E02", "confirmation_delay_s": 0.65},
+      {"sample_id": "E03", "confirmation_delay_s": 0.68},
+      {"sample_id": "E04", "confirmation_delay_s": 0.69},
+      {"sample_id": "E05", "confirmation_delay_s": 0.69},
+      {"sample_id": "E06", "confirmation_delay_s": 0.67},
+      {"sample_id": "E07", "confirmation_delay_s": 0.66},
+      {"sample_id": "E08", "confirmation_delay_s": 0.70}
     ]
   },
   "augmented_replay": {
     "samples": 488,
     "event_samples": 408,
-    "events_detected_within_2s": 407,
-    "event_misses": 1,
+    "events_detected_within_2s": 408,
+    "event_misses": 0,
     "pre_event_or_wrong_wheel_alarm_samples": 0,
     "normal_samples": 80,
     "normal_false_alarm_samples": 0,
-    "mean_confirmation_delay_s": 0.8294,
-    "max_confirmation_delay_s": 0.8677,
-    "missed_samples": ["E02_event_024"]
+    "mean_confirmation_delay_s": 0.67947652,
+    "p95_confirmation_delay_s": 0.70621444,
+    "max_confirmation_delay_s": 0.717654,
+    "missed_samples": []
   },
   "real_normal_road_replay": {
     "cases": 37,
     "frames": 8922100,
     "duration_hours": 24.784,
     "false_alarm_cases": 0,
-    "false_alarm_events": 0
+    "false_alarm_events": 0,
+    "candidate_entries": 21489
+  },
+  "optimization": {
+    "baseline_event_detection": "407/408",
+    "change": "55-frame early confirmation only when common log-speed range is <= 0.035; retain the original 70-frame confirmation otherwise",
+    "rejected_development_counterexample": "a 55-frame city-road FL false alarm had common log-speed range 0.0378",
+    "unified_report": "speed_algorithm_evaluation/summary.json"
   },
   "synthetic_regression": {
-    "tests": 8,
+    "tests": 9,
     "covered": [
       "each single wheel position",
       "two simultaneous wheels on either diagonal",
@@ -51,6 +59,7 @@
       "same-axle step rejection",
       "contaminated-reference suppression",
       "low-speed invalidation and latched alarm",
+      "early-confirmation common-speed guard",
       "reset and input validation"
     ]
   },

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "evaluation_date": "2026-08-17",
-  "algorithm": "online_factor_covariance_cusum_v1",
+  "evaluation_date": "2026-08-18",
+  "algorithm": "online_factor_covariance_cusum_v2",
   "inputs": ["time_s", "FL_speed", "FR_speed", "RL_speed", "RR_speed"],
   "pressure_sensor_input": false,
   "real_positive_replay": {
@@ -9,9 +9,9 @@
     "physical_target_wheels": ["RR"],
     "detected": 8,
     "wrong_wheel_or_pre_event_alarms": 0,
-    "mean_confirmation_delay_s": 0.83375,
-    "max_confirmation_delay_s": 0.86,
-    "confirmation_delays_s": [0.84, 0.81, 0.84, 0.85, 0.84, 0.82, 0.81, 0.86]
+    "mean_confirmation_delay_s": 0.68875,
+    "max_confirmation_delay_s": 0.73,
+    "confirmation_delays_s": [0.69, 0.66, 0.73, 0.70, 0.69, 0.67, 0.66, 0.71]
   },
   "augmented_replay": {
     "samples": 488,
@@ -21,7 +21,8 @@
     "pre_event_or_wrong_wheel_alarm_samples": 0,
     "normal_samples": 80,
     "normal_false_alarm_samples": 0,
-    "mean_confirmation_delay_s": 0.833790245,
+    "mean_confirmation_delay_s": 0.689648088,
+    "p95_confirmation_delay_s": 0.73556089,
     "max_confirmation_delay_s": 0.99206019
   },
   "real_normal_road_replay": {
@@ -30,20 +31,24 @@
     "duration_hours": 24.784,
     "false_alarm_cases": 0,
     "false_alarm_events": 0,
-    "candidate_entries_before_confirmation_filters": 2611
+    "candidate_entries_before_confirmation_filters": 2628
   },
   "calibration_history": {
     "initial_real_normal_false_alarm_cases": 3,
     "initial_false_alarm_case_ids": ["R011", "R017", "R023"],
     "added_control": "at least 95% of the confirmation tail must retain level-isolation z >= 1.0",
-    "post_control_false_alarm_cases": 0
+    "post_control_false_alarm_cases": 0,
+    "optimization": "reduce confirmation from 70 to 55 frames and reject physical projection peaks above 0.025",
+    "rejected_development_counterexample": "a 55-frame highway FL false alarm had physical projection peak 0.0522",
+    "unified_report": "speed_algorithm_evaluation/summary.json"
   },
   "synthetic_regression": {
-    "tests": 6,
+    "tests": 7,
     "covered": [
       "each single wheel factor fingerprint",
       "common acceleration and first-order steering neutrality",
       "same-axle change rejection by wheel isolation",
+      "oversized wheel-slip rejection",
       "risk leadership and latched alarm",
       "low-speed invalidation and re-warm",
       "reset and input validation"

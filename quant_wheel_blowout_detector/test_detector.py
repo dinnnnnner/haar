@@ -50,6 +50,10 @@ class QuantBlowoutDetectorTests(unittest.TestCase):
         results = self._run({0: (480, 0.011), 1: (480, 0.011)}, turn=False)
         self.assertFalse(any(results[-1].blowout_alarms))
 
+    def test_oversized_single_wheel_step_is_rejected_as_wheel_slip(self) -> None:
+        results = self._run({0: (480, 0.060)}, turn=False)
+        self.assertFalse(any(results[-1].blowout_alarms))
+
     def test_risk_score_leads_and_alarm_latches(self) -> None:
         results = self._run({3: (480, 0.011)})
         event_rows = [row for row in results[480:] if row.warmed_up]

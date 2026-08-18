@@ -43,10 +43,11 @@ class QuantBlowoutConfig:
     persistence_decay: float = 0.985
     persistence_drift_z: float = 0.5
 
-    confirm_frames: int = 70
+    confirm_frames: int = 55
     persistence_tail_frames: int = 40
     candidate_timeout_frames: int = 120
     min_physical_peak: float = 0.0060
+    max_physical_peak: float = 0.0250
     min_physical_persistence: float = 0.0042
     physical_persistence_floor: float = 0.0028
     min_persistence_fraction: float = 0.75
@@ -80,6 +81,8 @@ class QuantBlowoutConfig:
             raise ValueError("persistence_tail_frames is outside confirm_frames")
         if self.candidate_timeout_frames < self.confirm_frames:
             raise ValueError("candidate timeout must cover confirmation")
+        if self.max_physical_peak <= self.min_physical_peak:
+            raise ValueError("physical peak limits are invalid")
         if not 0.0 <= self.min_persistence_fraction <= 1.0:
             raise ValueError("min_persistence_fraction must be in [0, 1]")
         if not 0.0 <= self.min_isolation_fraction <= 1.0:
@@ -418,6 +421,7 @@ class QuantBlowoutDetector:
         state.below_frames = state.below_frames + 1 if physical_level < self.cfg.reset_physical_level else 0
         if (
             state.below_frames >= self.cfg.reset_below_frames
+            or state.peak_physical > self.cfg.max_physical_peak
             or state.candidate_frames >= self.cfg.candidate_timeout_frames
         ):
             self._clear_candidate(wheel)

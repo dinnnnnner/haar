@@ -1,0 +1,431 @@
+{
+  "schema_version": 1,
+  "evaluation_scope": {
+    "detection_window_s": 2.0,
+    "important": "Augmented samples share eight source events and are a development stress test, not an independent locked-parameter blind test."
+  },
+  "algorithms": {
+    "wheel_speed_only_baseline": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "baseline_window": 500,
+        "baseline_min_samples": 200,
+        "baseline_refresh_frames": 10,
+        "min_individual_edge": 0.0058,
+        "min_diagonal_edge": 0.0058,
+        "min_individual_peak": 0.007,
+        "min_diagonal_peak": 0.007,
+        "max_individual_peak": 0.025,
+        "max_diagonal_peak": 0.045,
+        "confirm_frames": 70,
+        "early_confirm_frames": null,
+        "persistence_tail_frames": 40,
+        "min_individual_persistence": 0.0055,
+        "min_diagonal_persistence": 0.0055,
+        "persistence_floor": 0.0035,
+        "min_persistence_fraction": 0.75,
+        "min_mate_persistence": -0.0035,
+        "early_max_common_speed_range": 0.035,
+        "max_common_speed_range": 0.05,
+        "candidate_drop_limit": -0.004,
+        "clear_after_invalid_frames": 50
+      },
+      "real_positive_replay": {
+        "samples": 8,
+        "detected_within_2s": 8,
+        "false_alarm_samples": 0,
+        "mean_delay_s": 0.8275000000000006,
+        "max_delay_s": 0.8500000000000014
+      },
+      "augmented_replay": {
+        "samples": 488,
+        "event_samples": 408,
+        "events_detected_within_2s": 407,
+        "event_misses": [
+          "E02_event_024"
+        ],
+        "event_false_alarm_samples": 0,
+        "normal_samples": 80,
+        "normal_false_alarm_samples": 0,
+        "mean_delay_s": 0.8294456014004915,
+        "p95_delay_s": 0.8562144400000022,
+        "max_delay_s": 0.8676540000000017,
+        "candidate_entries": 430,
+        "per_source": {
+          "E01": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E02": {
+            "event_samples": 51,
+            "events_detected_within_2s": 50,
+            "normal_false_alarm_samples": 0
+          },
+          "E03": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E04": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E05": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E06": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E07": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E08": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          }
+        }
+      },
+      "real_normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": [],
+        "candidate_entries": 21489
+      }
+    },
+    "wheel_speed_only_optimized": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "baseline_window": 500,
+        "baseline_min_samples": 200,
+        "baseline_refresh_frames": 10,
+        "min_individual_edge": 0.0058,
+        "min_diagonal_edge": 0.0058,
+        "min_individual_peak": 0.007,
+        "min_diagonal_peak": 0.007,
+        "max_individual_peak": 0.025,
+        "max_diagonal_peak": 0.045,
+        "confirm_frames": 70,
+        "early_confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "min_individual_persistence": 0.0055,
+        "min_diagonal_persistence": 0.0055,
+        "persistence_floor": 0.0035,
+        "min_persistence_fraction": 0.75,
+        "min_mate_persistence": -0.0035,
+        "early_max_common_speed_range": 0.035,
+        "max_common_speed_range": 0.05,
+        "candidate_drop_limit": -0.004,
+        "clear_after_invalid_frames": 50
+      },
+      "real_positive_replay": {
+        "samples": 8,
+        "detected_within_2s": 8,
+        "false_alarm_samples": 0,
+        "mean_delay_s": 0.6774999999999993,
+        "max_delay_s": 0.7000000000000028
+      },
+      "augmented_replay": {
+        "samples": 488,
+        "event_samples": 408,
+        "events_detected_within_2s": 408,
+        "event_misses": [],
+        "event_false_alarm_samples": 0,
+        "normal_samples": 80,
+        "normal_false_alarm_samples": 0,
+        "mean_delay_s": 0.6794765195098038,
+        "p95_delay_s": 0.7062144400000037,
+        "max_delay_s": 0.717653999999996,
+        "candidate_entries": 430,
+        "per_source": {
+          "E01": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E02": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E03": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E04": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E05": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E06": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E07": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E08": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          }
+        }
+      },
+      "real_normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": [],
+        "candidate_entries": 21489
+      }
+    },
+    "quant_baseline": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "warmup_frames": 300,
+        "mean_alpha": 0.001,
+        "level_cov_alpha": 0.004,
+        "edge_cov_alpha": 0.012,
+        "covariance_refresh_frames": 10,
+        "covariance_shrinkage": 0.25,
+        "level_variance_floor": 2.5e-08,
+        "edge_variance_floor": 1e-08,
+        "shock_trigger_z": 5.0,
+        "shock_isolation_z": 2.0,
+        "min_physical_edge": 0.0038,
+        "cusum_decay": 0.94,
+        "cusum_drift_z": 1.0,
+        "persistence_decay": 0.985,
+        "persistence_drift_z": 0.5,
+        "confirm_frames": 70,
+        "persistence_tail_frames": 40,
+        "candidate_timeout_frames": 120,
+        "min_physical_peak": 0.006,
+        "max_physical_peak": 1.0,
+        "min_physical_persistence": 0.0042,
+        "physical_persistence_floor": 0.0028,
+        "min_persistence_fraction": 0.75,
+        "min_level_isolation_z": 1.0,
+        "level_isolation_floor_z": 1.0,
+        "min_isolation_fraction": 0.95,
+        "min_median_level_z": 1.5,
+        "min_median_risk": 55.0,
+        "min_peak_risk": 82.0,
+        "max_common_log_range": 0.05,
+        "reset_physical_level": -0.0025,
+        "reset_below_frames": 15,
+        "clear_after_invalid_frames": 50
+      },
+      "real_positive_replay": {
+        "samples": 8,
+        "detected_within_2s": 8,
+        "false_alarm_samples": 0,
+        "mean_delay_s": 0.833750000000002,
+        "max_delay_s": 0.8599999999999994
+      },
+      "augmented_replay": {
+        "samples": 488,
+        "event_samples": 408,
+        "events_detected_within_2s": 408,
+        "event_misses": [],
+        "event_false_alarm_samples": 0,
+        "normal_samples": 80,
+        "normal_false_alarm_samples": 0,
+        "mean_delay_s": 0.8337902450000001,
+        "p95_delay_s": 0.8607269699999947,
+        "max_delay_s": 0.9920601899999966,
+        "candidate_entries": 418,
+        "per_source": {
+          "E01": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E02": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E03": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E04": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E05": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E06": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E07": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E08": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          }
+        }
+      },
+      "real_normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": [],
+        "candidate_entries": 2620
+      }
+    },
+    "quant_optimized": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "warmup_frames": 300,
+        "mean_alpha": 0.001,
+        "level_cov_alpha": 0.004,
+        "edge_cov_alpha": 0.012,
+        "covariance_refresh_frames": 10,
+        "covariance_shrinkage": 0.25,
+        "level_variance_floor": 2.5e-08,
+        "edge_variance_floor": 1e-08,
+        "shock_trigger_z": 5.0,
+        "shock_isolation_z": 2.0,
+        "min_physical_edge": 0.0038,
+        "cusum_decay": 0.94,
+        "cusum_drift_z": 1.0,
+        "persistence_decay": 0.985,
+        "persistence_drift_z": 0.5,
+        "confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "candidate_timeout_frames": 120,
+        "min_physical_peak": 0.006,
+        "max_physical_peak": 0.025,
+        "min_physical_persistence": 0.0042,
+        "physical_persistence_floor": 0.0028,
+        "min_persistence_fraction": 0.75,
+        "min_level_isolation_z": 1.0,
+        "level_isolation_floor_z": 1.0,
+        "min_isolation_fraction": 0.95,
+        "min_median_level_z": 1.5,
+        "min_median_risk": 55.0,
+        "min_peak_risk": 82.0,
+        "max_common_log_range": 0.05,
+        "reset_physical_level": -0.0025,
+        "reset_below_frames": 15,
+        "clear_after_invalid_frames": 50
+      },
+      "real_positive_replay": {
+        "samples": 8,
+        "detected_within_2s": 8,
+        "false_alarm_samples": 0,
+        "mean_delay_s": 0.6887499999999989,
+        "max_delay_s": 0.7299999999999969
+      },
+      "augmented_replay": {
+        "samples": 488,
+        "event_samples": 408,
+        "events_detected_within_2s": 408,
+        "event_misses": [],
+        "event_false_alarm_samples": 0,
+        "normal_samples": 80,
+        "normal_false_alarm_samples": 0,
+        "mean_delay_s": 0.6896480881372548,
+        "p95_delay_s": 0.7355608900000021,
+        "max_delay_s": 0.9920601899999966,
+        "candidate_entries": 418,
+        "per_source": {
+          "E01": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E02": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E03": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E04": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E05": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E06": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E07": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          },
+          "E08": {
+            "event_samples": 51,
+            "events_detected_within_2s": 51,
+            "normal_false_alarm_samples": 0
+          }
+        }
+      },
+      "real_normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": [],
+        "candidate_entries": 2628
+      }
+    }
+  }
+}

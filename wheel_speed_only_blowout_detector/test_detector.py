@@ -23,6 +23,7 @@ class WheelSpeedBlowoutDetectorTests(unittest.TestCase):
             baseline_window=300,
             confirm_frames=60,
             persistence_tail_frames=35,
+            early_confirm_frames=45,
         )
         detector = WheelSpeedBlowoutDetector(cfg)
         results = []
@@ -84,6 +85,7 @@ class WheelSpeedBlowoutDetectorTests(unittest.TestCase):
             baseline_window=50,
             confirm_frames=20,
             persistence_tail_frames=10,
+            early_confirm_frames=15,
             clear_after_invalid_frames=10,
         )
         detector = WheelSpeedBlowoutDetector(cfg)
@@ -97,6 +99,32 @@ class WheelSpeedBlowoutDetectorTests(unittest.TestCase):
             result = detector.push(WheelSpeedFrame.from_sequences(index * 0.01, [0.0] * 4))
         self.assertFalse(result.warmed_up)
         self.assertTrue(result.blowout_alarms[3])
+
+    def test_early_confirmation_requires_a_quiet_common_speed(self):
+        cfg = WheelSpeedBlowoutConfig(
+            baseline_min_samples=120,
+            baseline_window=300,
+        )
+        detector = WheelSpeedBlowoutDetector(cfg)
+        alarm_index = None
+        candidate_start = None
+        for index in range(380):
+            ramp = 0.0
+            if index >= 220:
+                ramp = 0.05 * min(index - 220, 40) / 40
+            wheels = [50.0 * (1.0 + ramp)] * 4
+            if index >= 220:
+                wheels[3] *= 1.011
+            result = detector.push(
+                WheelSpeedFrame.from_sequences(index * 0.01, wheels)
+            )
+            if result.candidates[3] and candidate_start is None:
+                candidate_start = index
+            if result.new_blowouts[3]:
+                alarm_index = index
+        self.assertIsNotNone(candidate_start)
+        self.assertIsNotNone(alarm_index)
+        self.assertGreaterEqual(alarm_index, candidate_start + cfg.confirm_frames - 1)
 
     def test_reset_and_input_validation(self):
         detector = WheelSpeedBlowoutDetector(

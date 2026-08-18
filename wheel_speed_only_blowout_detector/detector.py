@@ -36,12 +36,14 @@ class WheelSpeedBlowoutConfig:
     max_individual_peak: float = 0.0250
     max_diagonal_peak: float = 0.0450
     confirm_frames: int = 70
+    early_confirm_frames: int | None = 55
     persistence_tail_frames: int = 40
     min_individual_persistence: float = 0.0055
     min_diagonal_persistence: float = 0.0055
     persistence_floor: float = 0.0035
     min_persistence_fraction: float = 0.75
     min_mate_persistence: float = -0.0035
+    early_max_common_speed_range: float = 0.035
     max_common_speed_range: float = 0.050
     candidate_drop_limit: float = -0.0040
     clear_after_invalid_frames: int = 50
@@ -59,6 +61,14 @@ class WheelSpeedBlowoutConfig:
             raise ValueError("baseline_refresh_frames must be positive")
         if self.confirm_frames <= 0:
             raise ValueError("confirm_frames must be positive")
+        if self.early_confirm_frames is not None and not (
+            self.persistence_tail_frames
+            <= self.early_confirm_frames
+            < self.confirm_frames
+        ):
+            raise ValueError(
+                "early_confirm_frames must cover the persistence tail and precede confirm_frames"
+            )
         if not 1 <= self.persistence_tail_frames <= self.confirm_frames:
             raise ValueError("persistence_tail_frames is outside confirm_frames")
         if not 0.0 <= self.min_persistence_fraction <= 1.0:
@@ -67,6 +77,8 @@ class WheelSpeedBlowoutConfig:
             raise ValueError("individual peak limits are invalid")
         if self.max_diagonal_peak <= self.min_diagonal_peak:
             raise ValueError("diagonal peak limits are invalid")
+        if not 0.0 < self.early_max_common_speed_range <= self.max_common_speed_range:
+            raise ValueError("early common-speed range must not exceed the regular limit")
         if self.clear_after_invalid_frames <= 0:
             raise ValueError("clear_after_invalid_frames must be positive")
 
@@ -304,7 +316,13 @@ class WheelSpeedBlowoutDetector:
         ):
             self._candidates[wheel] = None
             return
-        if len(candidate.individual_values) < self.cfg.confirm_frames:
+        candidate_frames = len(candidate.individual_values)
+        first_confirmation_frame = (
+            self.cfg.confirm_frames
+            if self.cfg.early_confirm_frames is None
+            else self.cfg.early_confirm_frames
+        )
+        if candidate_frames < first_confirmation_frame:
             return
 
         tail = self.cfg.persistence_tail_frames
@@ -313,6 +331,11 @@ class WheelSpeedBlowoutDetector:
         mate_tail = candidate.mate_values[-tail:]
         common_range = max(candidate.common_log_speeds) - min(
             candidate.common_log_speeds
+        )
+        common_limit = (
+            self.cfg.early_max_common_speed_range
+            if candidate_frames < self.cfg.confirm_frames
+            else self.cfg.max_common_speed_range
         )
         confirmed = (
             candidate.max_individual >= self.cfg.min_individual_peak
@@ -324,14 +347,16 @@ class WheelSpeedBlowoutDetector:
             and self._above_fraction(diagonal_tail)
             >= self.cfg.min_persistence_fraction
             and median(mate_tail) >= self.cfg.min_mate_persistence
-            and common_range <= self.cfg.max_common_speed_range
+            and common_range <= common_limit
         )
         if confirmed:
             self._alarms[wheel] = True
             self._onset_indices[wheel] = candidate.onset_index
             self._onset_times[wheel] = candidate.onset_time_s
             new[wheel] = True
-        self._candidates[wheel] = None
+            self._candidates[wheel] = None
+        elif candidate_frames >= self.cfg.confirm_frames:
+            self._candidates[wheel] = None
 
     def _availability(self, speed_valid: bool) -> tuple[bool, bool, bool, bool]:
         if not speed_valid:
