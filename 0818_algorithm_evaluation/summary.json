@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "optimization_basis": {
+    "positive_dataset": "0818",
+    "included_cases": [
+      "60kpa_RRBlowOut",
+      "Acc_RRBlowOut",
+      "Brk_RRBlowOut"
+    ],
+    "deferred_cases": [
+      "40kph_RRBlowOut"
+    ],
+    "excluded_positive_datasets": [
+      "ly"
+    ],
+    "note": "40kph 标注和轮速反馈问题暂不纳入；正常道路仅用于误报回放。"
+  },
+  "algorithms": {
+    "wheelonly_previous": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "baseline_window": 500,
+        "baseline_min_samples": 200,
+        "baseline_refresh_frames": 10,
+        "min_individual_edge": 0.0058,
+        "min_diagonal_edge": 0.0058,
+        "min_individual_peak": 0.007,
+        "min_diagonal_peak": 0.007,
+        "max_individual_peak": 0.025,
+        "max_diagonal_peak": 0.045,
+        "confirm_frames": 70,
+        "early_confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "min_individual_persistence": 0.0055,
+        "min_diagonal_persistence": 0.0055,
+        "persistence_floor": 0.0035,
+        "min_persistence_fraction": 0.75,
+        "min_mate_persistence": -0.0035,
+        "braking_min_mate_persistence": -0.0035,
+        "early_max_common_speed_range": 0.035,
+        "max_common_speed_range": 0.05,
+        "early_max_braking_speed_range": 0.035,
+        "max_braking_speed_range": 0.05,
+        "min_braking_range_fraction": 0.0,
+        "candidate_drop_limit": -0.004,
+        "clear_after_invalid_frames": 50
+      },
+      "0818_positive_replay": {
+        "samples": 3,
+        "detected_within_2s": 1,
+        "pre_event_false_alarm_samples": 0,
+        "wrong_wheel_false_alarm_samples": 0,
+        "mean_delay_s": 0.9499999999999957,
+        "max_delay_s": 0.9499999999999957,
+        "misses": [
+          "60kpa_RRBlowOut",
+          "Brk_RRBlowOut"
+        ]
+      },
+      "normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": []
+      }
+    },
+    "wheelonly_0818": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "baseline_window": 500,
+        "baseline_min_samples": 200,
+        "baseline_refresh_frames": 10,
+        "min_individual_edge": 0.005,
+        "min_diagonal_edge": 0.005,
+        "min_individual_peak": 0.007,
+        "min_diagonal_peak": 0.007,
+        "max_individual_peak": 0.035,
+        "max_diagonal_peak": 0.045,
+        "confirm_frames": 70,
+        "early_confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "min_individual_persistence": 0.0055,
+        "min_diagonal_persistence": 0.0058,
+        "persistence_floor": 0.0035,
+        "min_persistence_fraction": 0.75,
+        "min_mate_persistence": -0.0035,
+        "braking_min_mate_persistence": -0.015,
+        "early_max_common_speed_range": 0.035,
+        "max_common_speed_range": 0.05,
+        "early_max_braking_speed_range": 0.2,
+        "max_braking_speed_range": 0.3,
+        "min_braking_range_fraction": 0.8,
+        "candidate_drop_limit": -0.004,
+        "clear_after_invalid_frames": 50
+      },
+      "0818_positive_replay": {
+        "samples": 3,
+        "detected_within_2s": 3,
+        "pre_event_false_alarm_samples": 0,
+        "wrong_wheel_false_alarm_samples": 0,
+        "mean_delay_s": 0.8433333333333337,
+        "max_delay_s": 0.9399999999999977,
+        "misses": []
+      },
+      "normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": []
+      }
+    },
+    "quant_previous": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "warmup_frames": 300,
+        "mean_alpha": 0.001,
+        "level_cov_alpha": 0.004,
+        "edge_cov_alpha": 0.012,
+        "covariance_refresh_frames": 10,
+        "covariance_shrinkage": 0.25,
+        "level_variance_floor": 2.5e-08,
+        "edge_variance_floor": 1e-08,
+        "shock_trigger_z": 5.0,
+        "max_shock_trigger_z": 1000000000.0,
+        "shock_isolation_z": 2.0,
+        "min_physical_edge": 0.0038,
+        "cusum_decay": 0.94,
+        "cusum_drift_z": 1.0,
+        "persistence_decay": 0.985,
+        "persistence_drift_z": 0.5,
+        "confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "candidate_timeout_frames": 120,
+        "min_physical_peak": 0.006,
+        "min_physical_peak_with_common_motion": 0.006,
+        "small_peak_max_common_log_range": 0.05,
+        "max_physical_peak": 0.025,
+        "min_physical_persistence": 0.0042,
+        "physical_persistence_floor": 0.0028,
+        "min_persistence_fraction": 0.75,
+        "min_level_isolation_z": 1.0,
+        "level_isolation_floor_z": 1.0,
+        "min_isolation_fraction": 0.95,
+        "min_median_level_z": 1.5,
+        "max_peer_physical_median": 1.0,
+        "min_median_risk": 55.0,
+        "min_peak_risk": 82.0,
+        "max_common_log_range": 0.05,
+        "max_braking_log_range": 0.05,
+        "min_braking_range_fraction": 0.0,
+        "reset_physical_level": -0.0025,
+        "reset_below_frames": 15,
+        "clear_after_invalid_frames": 50
+      },
+      "0818_positive_replay": {
+        "samples": 3,
+        "detected_within_2s": 0,
+        "pre_event_false_alarm_samples": 0,
+        "wrong_wheel_false_alarm_samples": 0,
+        "mean_delay_s": null,
+        "max_delay_s": null,
+        "misses": [
+          "60kpa_RRBlowOut",
+          "Acc_RRBlowOut",
+          "Brk_RRBlowOut"
+        ]
+      },
+      "normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": []
+      }
+    },
+    "quant_0818": {
+      "config": {
+        "sample_rate_hz": 100.0,
+        "min_avg_speed": 20.0,
+        "smooth_window": 5,
+        "edge_half_window": 6,
+        "warmup_frames": 300,
+        "mean_alpha": 0.001,
+        "level_cov_alpha": 0.004,
+        "edge_cov_alpha": 0.012,
+        "covariance_refresh_frames": 10,
+        "covariance_shrinkage": 0.25,
+        "level_variance_floor": 2.5e-08,
+        "edge_variance_floor": 1e-08,
+        "shock_trigger_z": 3.0,
+        "max_shock_trigger_z": 4.5,
+        "shock_isolation_z": 2.0,
+        "min_physical_edge": 0.0039,
+        "cusum_decay": 0.94,
+        "cusum_drift_z": 1.0,
+        "persistence_decay": 0.985,
+        "persistence_drift_z": 0.5,
+        "confirm_frames": 55,
+        "persistence_tail_frames": 40,
+        "candidate_timeout_frames": 120,
+        "min_physical_peak": 0.006,
+        "min_physical_peak_with_common_motion": 0.01,
+        "small_peak_max_common_log_range": 0.02,
+        "max_physical_peak": 0.025,
+        "min_physical_persistence": 0.006,
+        "physical_persistence_floor": 0.0028,
+        "min_persistence_fraction": 0.75,
+        "min_level_isolation_z": 1.0,
+        "level_isolation_floor_z": 1.0,
+        "min_isolation_fraction": 0.825,
+        "min_median_level_z": 1.5,
+        "max_peer_physical_median": 0.0015,
+        "min_median_risk": 52.5,
+        "min_peak_risk": 82.0,
+        "max_common_log_range": 0.05,
+        "max_braking_log_range": 0.25,
+        "min_braking_range_fraction": 0.8,
+        "reset_physical_level": -0.0025,
+        "reset_below_frames": 15,
+        "clear_after_invalid_frames": 50
+      },
+      "0818_positive_replay": {
+        "samples": 3,
+        "detected_within_2s": 3,
+        "pre_event_false_alarm_samples": 0,
+        "wrong_wheel_false_alarm_samples": 0,
+        "mean_delay_s": 0.7866666666666665,
+        "max_delay_s": 0.8499999999999943,
+        "misses": []
+      },
+      "normal_road_replay": {
+        "cases": 37,
+        "frames": 8922100,
+        "duration_hours": 24.78350833333333,
+        "false_alarm_cases": 0,
+        "false_alarm_case_names": []
+      }
+    }
+  }
+}

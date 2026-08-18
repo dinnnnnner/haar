@@ -1,22 +1,48 @@
 # 小波形态爆胎检测器
 
+## 0818 新采数据 Display
+
+`0818/` 原始文件每帧由四行 FL/FR/RL/RR 齿时间戳和一行车辆信号组成，
+车辆信号行的最后一个值作为爆胎信号位。以下命令会做 48 齿相位校正，并只
+回放 `wheel_speed_only` 与 `quant` 两套纯轮速算法，启动浏览器控制台：
+
+```bash
+python3 serve_0818_console.py
+```
+
+浏览器访问 `http://127.0.0.1:8773`。控制台支持记录列表、上一条/下一条、
+时间窗口、候选区间跳转，以及 `wheel_only`、`quant` 和双算法对比切换。
+原始爆胎信号逐帧显示；事件时刻取首段持续至少 20 帧的高电平，以忽略文件
+开头的短暂残留信号。若仍需生成静态 HTML，可运行
+`python3 build_0818_display.py`。
+
+当前算法优化只采用 `60kpa_RRBlowOut`、`Acc_RRBlowOut` 和
+`Brk_RRBlowOut` 三条 0818 正样本；`40kph_RRBlowOut` 的标注和轮速反馈问题
+暂缓处理，ly 爆胎样本不参与调参或验收。独立复跑入口为：
+
+```bash
+python3 evaluate_0818_algorithms.py --jobs 4
+```
+
+结果写入 `0818_algorithm_evaluation/`。两套算法在三条有效事件上均为 3/3 RR
+正确检出，且 37 条正常道路（8,922,100 帧、24.78 小时）均为 0 误报。
+
 ## 两套纯轮速算法
 
 仓库同时保留两套只读取四轮校正轮速的独立算法：
 
-- `wheel_speed_only_blowout_detector`：双空间物理硬门限，支持平稳工况下 55 帧
-  早确认，否则保留 70 帧复核；
+- `wheel_speed_only_blowout_detector`：双空间物理硬门限，支持平稳或明确制动
+  工况下的独立持续确认；
 - `quant_wheel_blowout_detector`：Hadamard 三因子、在线协方差、匹配滤波和
-  CUSUM 风险分，默认 55 帧确认并排除超过 2.5% 的轮滑型物理投影。
+  CUSUM 风险分，增加 0818 小冲击触发带、持续物理幅值和单轮指纹纯度约束。
 
-两套算法优化前后的统一评估入口为：
+旧数据集评估入口仍保留为：
 
 ```bash
 python3 evaluate_speed_algorithms.py --jobs 4
 ```
 
-逐样本、逐正常道路和汇总结果位于 `speed_algorithm_evaluation/`。这些结果是
-同源开发回放，不是锁参后的独立盲测。
+它不再作为当前两套纯轮速算法的爆胎正样本优化依据。
 
 ## 胎压对角融合四轮检测（推荐低误报方案）
 

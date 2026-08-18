@@ -50,6 +50,32 @@ class QuantBlowoutDetectorTests(unittest.TestCase):
         results = self._run({0: (480, 0.011), 1: (480, 0.011)}, turn=False)
         self.assertFalse(any(results[-1].blowout_alarms))
 
+    def test_competing_physical_mode_fails_single_wheel_purity(self) -> None:
+        strict = self._run({3: (480, 0.014), 2: (480, 0.004)})
+        self.assertTrue(any(row.states[3] == "candidate" for row in strict))
+        self.assertFalse(strict[-1].blowout_alarms[3])
+
+        detector = QuantBlowoutDetector(
+            QuantBlowoutConfig(max_peer_physical_median=1.0)
+        )
+        relaxed = []
+        for index in range(720):
+            common = 50.0 + min(index, 420) * 0.005
+            steering = 0.0015 * max(0, min(index - 350, 80))
+            wheels = [
+                common + steering,
+                common - steering,
+                common + steering,
+                common - steering,
+            ]
+            if index >= 480:
+                wheels[3] *= 1.014
+                wheels[2] *= 1.004
+            relaxed.append(
+                detector.push(QuantFrame.from_sequences(index * 0.01, wheels))
+            )
+        self.assertTrue(relaxed[-1].blowout_alarms[3])
+
     def test_oversized_single_wheel_step_is_rejected_as_wheel_slip(self) -> None:
         results = self._run({0: (480, 0.060)}, turn=False)
         self.assertFalse(any(results[-1].blowout_alarms))
