@@ -23,6 +23,8 @@ class ConsoleDataTests(unittest.TestCase):
             )
             for index in range(430):
                 wheels = [50.0] * 4
+                if 180 <= index < 192:
+                    wheels[0] *= 1.011
                 if index >= 240:
                     wheels[3] *= 1.011
                 writer.writerow([index * 0.01, *wheels])
@@ -42,8 +44,32 @@ class ConsoleDataTests(unittest.TestCase):
         confirmed = [item for item in scan.suspects if item.confirmed]
         self.assertEqual(len(confirmed), 1)
         self.assertEqual(confirmed[0].wheel_index, 3)
+        self.assertFalse(confirmed[0].cancelled)
         self.assertEqual(scan.first_alarm_times[3], confirmed[0].end_s)
         self.assertIsNotNone(confirmed[0].peak_diagonal_gain_pct)
+        cancelled = [item for item in scan.suspects if item.cancelled]
+        self.assertEqual(len(cancelled), 1)
+        self.assertEqual(cancelled[0].wheel_index, 0)
+        self.assertAlmostEqual(cancelled[0].duration_s, 0.59)
+
+    def test_scan_does_not_count_candidate_open_at_eof_as_cancelled(self) -> None:
+        unfinished = self.root / "unfinished.csv"
+        with unfinished.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(
+                ["time_s", *(f"wheel{i}_corrected_rad_s" for i in range(4))]
+            )
+            for index in range(200):
+                wheels = [50.0] * 4
+                if index >= 180:
+                    wheels[0] *= 1.011
+                writer.writerow([index * 0.01, *wheels])
+
+        scan = scan_csv(unfinished, self.cfg)
+
+        self.assertEqual(len(scan.suspects), 1)
+        self.assertFalse(scan.suspects[0].confirmed)
+        self.assertFalse(scan.suspects[0].cancelled)
 
     def test_window_replay_keeps_four_wheel_evidence(self) -> None:
         data = analyze_window(self.csv_path, 2.2, 3.4, self.cfg)
@@ -134,8 +160,20 @@ class ConsoleDataTests(unittest.TestCase):
             self.cfg,
         )
 
-        self.assertIn("纯四轮轮速爆胎算法控制台", state.render_index())
-        self.assertIn("候选区间", state.render_case("E01", None, None))
+        index_html = state.render_index()
+        self.assertIn("纯四轮轮速爆胎算法控制台", index_html)
+        self.assertIn("取消耗时统计", index_html)
+        case_html = state.render_case("E01", None, None)
+        self.assertIn("候选区间", case_html)
+        self.assertIn("耗时 ↓", case_html)
+        cancelled = state.cancelled_candidates()
+        self.assertEqual(len(cancelled), 2)
+        self.assertTrue(all(item.duration_s == cancelled[0].duration_s for item in cancelled))
+        cancellation_html = state.render_cancellations()
+        self.assertIn("误报取消耗时统计", cancellation_html)
+        self.assertIn("正常道路 1 个", cancellation_html)
+        self.assertIn("跳转查看", cancellation_html)
+        self.assertIn("/case/E01?start=", cancellation_html)
         self.assertIn("自定义 CSV", state.render_custom(str(self.csv_path), 2.2, 3.4))
 
 

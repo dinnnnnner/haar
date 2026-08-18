@@ -31,6 +31,7 @@ class SuspectInterval:
     peak_diagonal_gain_pct: float | None
     peak_individual_edge_pct: float | None
     peak_diagonal_edge_pct: float | None
+    cancelled: bool = False
 
     @property
     def duration_s(self) -> float:
@@ -158,6 +159,7 @@ def scan_csv(
                             peak_diag_gains[wheel],
                             peak_edges[wheel],
                             peak_diag_edges[wheel],
+                            not result.new_blowouts[wheel],
                         )
                     )
                     starts[wheel] = None
@@ -182,6 +184,7 @@ def scan_csv(
                     peak_diag_gains[wheel],
                     peak_edges[wheel],
                     peak_diag_edges[wheel],
+                    False,
                 )
             )
     suspects.sort(key=lambda interval: (interval.start_s, interval.wheel_index))

@@ -5,10 +5,11 @@ import csv
 import html
 import json
 import math
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from statistics import median
 from typing import Sequence
 from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 
@@ -30,6 +31,20 @@ DEFAULT_VALIDATION = (
     WORKSPACE_ROOT / "wheel_speed_only_blowout_detector" / "validation_summary.json"
 )
 WHEEL_COLORS = ("#2563eb", "#ea8a00", "#16a34a", "#dc2626")
+
+
+@dataclass(frozen=True)
+class CancelledCandidate:
+    case_id: str
+    case_name: str
+    scenario: str
+    sample_type: str
+    wheel_index: int
+    start_s: float
+    end_s: float
+    duration_s: float
+    peak_individual_gain_pct: float | None
+    peak_diagonal_gain_pct: float | None
 
 
 class ConsoleState:
@@ -59,6 +74,9 @@ class ConsoleState:
         self._load_normal_cases()
         self._cached_scan = lru_cache(maxsize=cache_size)(self._scan_path)
         self._cached_detail = lru_cache(maxsize=cache_size)(self._render_case_cached)
+        self._cached_cancelled_candidates = lru_cache(maxsize=1)(
+            self._collect_cancelled_candidates
+        )
 
     def _load_event_cases(self) -> None:
         dataset_root = self.event_manifest.parent
@@ -139,7 +157,7 @@ class ConsoleState:
 <header><div><p class='eyebrow'>FOUR-WHEEL SPEED · NO TPMS</p>
 <h1>纯四轮轮速爆胎算法控制台</h1>
 <p class='muted'>完整因果回放 · 双空间证据 · 候选区间 · 四轮独立锁存</p></div>
-<nav><a class='button secondary' href='/report'>算法与验证</a><a class='button' href='/validation.json'>下载验证 JSON</a></nav></header>
+<nav><a class='button secondary' href='/cancellations'>取消耗时统计</a><a class='button secondary' href='/report'>算法与验证</a><a class='button' href='/validation.json'>下载验证 JSON</a></nav></header>
 <section class='cards'>
   <div class='card accent'><span>真实爆胎检出</span><strong>{positive['detected']}/{positive['samples']}</strong><small>平均延迟 {positive['mean_confirmation_delay_s']:.3f}s</small></div>
   <div class='card'><span>增强事件</span><strong>{augmented['events_detected_within_2s']}/{augmented['event_samples']}</strong><small>2 秒内正确轮位</small></div>
@@ -157,6 +175,178 @@ class ConsoleState:
 <tbody>{''.join(rows)}</tbody></table></div></section>
 <section class='notice'><b>使用边界：</b>真实正样本目前仅覆盖 RR；相邻两轮或四轮完全等幅同步变化不从相对轮速强判，以控制转弯、轴滑移和制动误报。</section>
 <script>{_FILTER_SCRIPT}</script>
+""",
+        )
+
+    def cancelled_candidates(self) -> tuple[CancelledCandidate, ...]:
+        """Return all candidates that the detector explicitly cancelled."""
+
+        return self._cached_cancelled_candidates()
+
+    def _collect_cancelled_candidates(self) -> tuple[CancelledCandidate, ...]:
+        records: list[CancelledCandidate] = []
+        for case_id in self.case_ids:
+            case = self.cases[case_id]
+            scan = self._cached_scan(str(case["csv_path"]))
+            for interval in scan.suspects:
+                if not interval.cancelled:
+                    continue
+                records.append(
+                    CancelledCandidate(
+                        case_id=case_id,
+                        case_name=str(case["name"]),
+                        scenario=str(case["scenario"]),
+                        sample_type=str(case["sample_type"]),
+                        wheel_index=interval.wheel_index,
+                        start_s=interval.start_s,
+                        end_s=interval.end_s,
+                        duration_s=interval.duration_s,
+                        peak_individual_gain_pct=interval.peak_individual_gain_pct,
+                        peak_diagonal_gain_pct=interval.peak_diagonal_gain_pct,
+                    )
+                )
+        return tuple(records)
+
+    def render_cancellations(
+        self,
+        *,
+        sort_by: str = "duration-desc",
+        sample_type: str = "",
+        wheel_name: str = "",
+        query: str = "",
+        page: int = 1,
+    ) -> str:
+        records = self.cancelled_candidates()
+        sorters = {
+            "duration-desc": lambda item: (-item.duration_s, item.case_id, item.start_s),
+            "duration-asc": lambda item: (item.duration_s, item.case_id, item.start_s),
+            "start-asc": lambda item: (item.start_s, item.case_id, item.wheel_index),
+            "case-asc": lambda item: (item.case_id, item.start_s, item.wheel_index),
+        }
+        if sort_by not in sorters:
+            raise ValueError("不支持的取消耗时排序方式")
+        if sample_type not in ("", "normal", "event"):
+            raise ValueError("不支持的记录类型筛选")
+        if wheel_name not in ("", *WHEEL_NAMES):
+            raise ValueError("不支持的轮位筛选")
+        if page < 1:
+            raise ValueError("页码必须为正整数")
+        normalized_query = query.strip().casefold()
+        filtered = [
+            item
+            for item in records
+            if (not sample_type or item.sample_type == sample_type)
+            and (not wheel_name or WHEEL_NAMES[item.wheel_index] == wheel_name)
+            and (
+                not normalized_query
+                or normalized_query
+                in f"{item.case_id} {item.case_name} {item.scenario}".casefold()
+            )
+        ]
+        ordered = sorted(filtered, key=sorters[sort_by])
+        page_size = 200
+        page_count = max(1, math.ceil(len(ordered) / page_size))
+        page = min(page, page_count)
+        offset = (page - 1) * page_size
+        visible_records = ordered[offset : offset + page_size]
+        durations = sorted(item.duration_s for item in records)
+        count = len(durations)
+        average = sum(durations) / count if count else None
+        med = median(durations) if durations else None
+        p95 = durations[max(0, math.ceil(count * 0.95) - 1)] if durations else None
+        maximum = durations[-1] if durations else None
+        normal_count = sum(item.sample_type == "normal" for item in records)
+        rows: list[str] = []
+        for rank, item in enumerate(visible_records, start=offset + 1):
+            focus_start = max(0.0, item.start_s - 2.0)
+            focus_end = item.end_s + 2.0
+            target = (
+                f"/case/{quote(item.case_id)}?start={focus_start:.3f}"
+                f"&end={focus_end:.3f}#plot"
+            )
+            escaped_target = html.escape(target, quote=True)
+            rows.append(
+                "<tr>"
+                f"<td class='rank'>{rank}</td>"
+                f"<td><strong>{item.duration_s:.3f}s</strong></td>"
+                f"<td><a href='{escaped_target}'>{html.escape(item.case_id)}</a><small class='cell-sub'>{html.escape(item.case_name)}</small></td>"
+                f"<td>{html.escape(item.scenario)}</td>"
+                f"<td>{'爆胎基线' if item.sample_type == 'event' else '正常道路'}</td>"
+                f"<td><i class='wheel-dot' style='background:{WHEEL_COLORS[item.wheel_index]}'></i>{WHEEL_NAMES[item.wheel_index]}</td>"
+                f"<td>{item.start_s:.3f}–{item.end_s:.3f}s</td>"
+                f"<td>{self._pct(item.peak_individual_gain_pct)}</td>"
+                f"<td>{self._pct(item.peak_diagonal_gain_pct)}</td>"
+                f"<td><a class='mini-button' href='{escaped_target}'>跳转查看</a></td></tr>"
+            )
+        empty_row = (
+            "<tr class='empty-row'><td colspan='10'>当前数据没有被算法取消的候选。</td></tr>"
+            if not rows
+            else ""
+        )
+        filter_params = {
+            "q": query.strip(),
+            "type": sample_type,
+            "wheel": wheel_name,
+            "sort": sort_by,
+        }
+
+        def page_link(target_page: int, label: str, *, disabled: bool) -> str:
+            if disabled:
+                return f"<span class='mini-button disabled'>{label}</span>"
+            url = "/cancellations?" + urlencode(
+                {**filter_params, "page": target_page}
+            )
+            return f"<a class='mini-button' href='{html.escape(url, quote=True)}'>{label}</a>"
+
+        first_visible = offset + 1 if visible_records else 0
+        last_visible = offset + len(visible_records)
+        pagination = (
+            "<div class='pagination'>"
+            + page_link(page - 1, "← 上一页", disabled=page == 1)
+            + f"<span>第 {page}/{page_count} 页 · 显示 {first_visible}–{last_visible}/{len(ordered)}"
+            + (f"（全量 {count}）" if len(ordered) != count else "")
+            + "</span>"
+            + page_link(page + 1, "下一页 →", disabled=page == page_count)
+            + "</div>"
+        )
+        type_options = "".join(
+            f"<option value='{value}'{' selected' if sample_type == value else ''}>{label}</option>"
+            for value, label in (("", "全部类型"), ("normal", "正常道路"), ("event", "爆胎基线"))
+        )
+        wheel_options = "".join(
+            f"<option value='{value}'{' selected' if wheel_name == value else ''}>{label}</option>"
+            for value, label in (("", "全部轮位"), *((name, name) for name in WHEEL_NAMES))
+        )
+        sort_options = "".join(
+            f"<option value='{value}'{' selected' if sort_by == value else ''}>{label}</option>"
+            for value, label in (
+                ("duration-desc", "耗时：长 → 短"),
+                ("duration-asc", "耗时：短 → 长"),
+                ("start-asc", "发生时间：早 → 晚"),
+                ("case-asc", "记录 ID"),
+            )
+        )
+        return _page(
+            "误报取消耗时统计",
+            f"""
+<nav class='top-nav'><a href='/'>← 返回控制台</a><span><a class='button secondary' href='/report'>算法与验证</a></span></nav>
+<header><div><p class='eyebrow'>CANCELLED CANDIDATES</p><h1>误报取消耗时统计</h1>
+<p class='muted'>统计 candidate 状态开始到算法明确排除的时间；文件结束时仍未决的候选不计入。</p></div></header>
+<section class='cards compact'>
+  <div class='card accent'><span>取消候选</span><strong>{count}</strong><small>正常道路 {normal_count} 个</small></div>
+  <div class='card'><span>平均 / 中位</span><strong>{self._seconds(average)} / {self._seconds(med)}</strong><small>从进入 candidate 到退出</small></div>
+  <div class='card'><span>P95</span><strong>{self._seconds(p95)}</strong><small>nearest-rank 95 分位</small></div>
+  <div class='card'><span>最长</span><strong>{self._seconds(maximum)}</strong><small>默认按耗时降序</small></div>
+</section>
+<section class='panel'><form class='controls cancellation-controls' action='/cancellations' method='get'>
+  <input name='q' value='{html.escape(query.strip(), quote=True)}' placeholder='搜索记录、文件或场景…'>
+  <select name='type'>{type_options}</select>
+  <select name='wheel'>{wheel_options}</select>
+  <select name='sort'>{sort_options}</select>
+  <button>筛选 / 排序</button>
+</form>{pagination}<div class='table-wrap'><table class='cancellation-table'><thead><tr><th>#</th><th>取消耗时</th><th>记录</th><th>场景</th><th>类型</th><th>轮位</th><th>区间</th><th>逐轮峰值</th><th>对角峰值</th><th>操作</th></tr></thead>
+<tbody id='cancellation-rows'>{''.join(rows)}{empty_row}</tbody></table></div></section>
+<section class='notice'><b>口径：</b>这里只统计进入 candidate 后由门限、持续性或风险约束明确取消的区间；已确认报警和文件末尾未决区间均排除。点击“跳转查看”会打开该候选前后各 2 秒的完整证据图。</section>
 """,
         )
 
@@ -266,6 +456,8 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
         plot_data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         marker = "null" if event is None else str(event)
         confirmed = sum(interval.confirmed for interval in scan.suspects)
+        cancelled = sum(interval.cancelled for interval in scan.suspects)
+        unresolved = len(scan.suspects) - confirmed - cancelled
         first_alarm = ", ".join(
             f"{WHEEL_NAMES[index]} {value:.2f}s"
             for index, value in enumerate(scan.first_alarm_times)
@@ -286,7 +478,7 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
 <h1>{html.escape(str(case['name']))}</h1><p class='path'>{html.escape(str(csv_path))}</p></div>
 <div class='legend'>{''.join(f"<span><i style='background:{color}'></i>{name}</span>" for name, color in zip(WHEEL_NAMES, WHEEL_COLORS))}</div></header>
 <section class='cards compact'>
-  <div class='card'><span>完整记录候选</span><strong>{len(scan.suspects)}</strong><small>含已排除候选</small></div>
+  <div class='card'><span>完整记录候选</span><strong>{len(scan.suspects)}</strong><small>已排除 {cancelled} · 未决 {unresolved}</small></div>
   <div class='card'><span>最终确认</span><strong>{confirmed}</strong><small>首报 {first_alarm}</small></div>
   <div class='card'><span>记录规模</span><strong>{scan.frames:,}</strong><small>{scan.end_s - scan.start_s:.1f}s · 有效 {scan.valid_frames:,} 帧</small></div>
   <div class='card'><span>当前窗口</span><strong>{start_s:.2f}–{end_s:.2f}s</strong><small>{end_s - start_s:.2f} 秒</small></div>
@@ -302,7 +494,7 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
 </form>
 <div id='readout' class='readout'>移动鼠标到曲线上查看同一时刻的四轮证据</div>
 <div class='workbench'>
-  <aside><div class='aside-title'><h2>候选区间</h2><span>点击聚焦</span></div>{suspect_rows}</aside>
+  <aside><div class='aside-title'><div><h2>候选区间</h2><span>点击聚焦</span></div><select id='suspect-sort' aria-label='候选排序'><option value='duration-desc'>耗时 ↓</option><option value='duration-asc'>耗时 ↑</option><option value='start-asc'>时间 ↑</option></select></div><div id='suspect-list'>{suspect_rows}</div></aside>
   <section id='plot' class='charts'>
     <div class='plot-panel'><canvas id='wheelPlot' height='300'></canvas></div>
     <div class='plot-panel'><canvas id='gainPlot' height='300'></canvas></div>
@@ -310,8 +502,8 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
     <div class='plot-panel'><canvas id='alarmPlot' height='300'></canvas></div>
   </section>
 </div>
-<section class='notice'><b>图例：</b>彩色背景为算法进入候选的区间，实边框表示最终确认；逐轮证据为实线、对角证据为虚线。边沿图中的水平虚线是候选门限。</section>
-<script>const D={plot_data};const COLORS={json.dumps(WHEEL_COLORS)};const N={json.dumps(WHEEL_NAMES)};const eventTime={marker};const CFG={json.dumps(asdict(self.cfg))};{_CHART_SCRIPT}</script>
+<section class='notice'><b>图例：</b>彩色背景为算法进入候选的区间，实边框表示最终确认；“已排除”表示算法明确取消，“未决”表示记录在候选结束前到达文件末尾。逐轮证据为实线、对角证据为虚线。</section>
+<script>const D={plot_data};const COLORS={json.dumps(WHEEL_COLORS)};const N={json.dumps(WHEEL_NAMES)};const eventTime={marker};const CFG={json.dumps(asdict(self.cfg))};{_CHART_SCRIPT}{_SUSPECT_SORT_SCRIPT}</script>
 """,
         )
 
@@ -336,12 +528,19 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
             focus_start = max(scan.start_s, interval.start_s - 2.0)
             focus_end = min(scan.end_s, interval.end_s + 2.0)
             selected = interval.end_s >= start_s and interval.start_s <= end_s
+            if interval.confirmed:
+                outcome_class, outcome = "ok", "已确认"
+            elif interval.cancelled:
+                outcome_class, outcome = "", "已排除"
+            else:
+                outcome_class, outcome = "pending", "未决"
             rows.append(
                 f"<a class='suspect {'selected' if selected else ''}' "
+                f"data-duration='{interval.duration_s:.9f}' data-start='{interval.start_s:.9f}' "
                 f"style='border-left-color:{WHEEL_COLORS[interval.wheel_index]}' "
                 f"href='{base_url}{separator}start={focus_start:.3f}&end={focus_end:.3f}#plot'>"
                 f"<span class='suspect-head'><b>#{number} · {WHEEL_NAMES[interval.wheel_index]}</b>"
-                f"<em class='{'ok' if interval.confirmed else ''}'>{'已确认' if interval.confirmed else '已排除'}</em></span>"
+                f"<em class='{outcome_class}'>{outcome}</em></span>"
                 f"<span>{interval.start_s:.3f}–{interval.end_s:.3f}s · {interval.duration_s:.3f}s</span>"
                 f"<small>逐轮峰值 {self._pct(interval.peak_individual_gain_pct)}　对角峰值 {self._pct(interval.peak_diagonal_gain_pct)}</small></a>"
             )
@@ -376,6 +575,10 @@ diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) +
     def _pct(value: float | None) -> str:
         return "—" if value is None else f"{value:.3f}%"
 
+    @staticmethod
+    def _seconds(value: float | None) -> str:
+        return "—" if value is None else f"{value:.3f}s"
+
     def _scenario_options(self) -> str:
         scenarios = sorted({str(case["scenario"]) for case in self.cases.values()})
         return "".join(
@@ -400,6 +603,17 @@ class ConsoleHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path == "/report":
                 self._send_html(self.state.render_report())
+                return
+            if parsed.path == "/cancellations":
+                self._send_html(
+                    self.state.render_cancellations(
+                        sort_by=query.get("sort", ["duration-desc"])[0],
+                        sample_type=query.get("type", [""])[0],
+                        wheel_name=query.get("wheel", [""])[0],
+                        query=query.get("q", [""])[0],
+                        page=self._optional_int(query, "page", 1),
+                    )
+                )
                 return
             if parsed.path == "/validation.json":
                 self._send_json(self.state.validation)
@@ -435,6 +649,13 @@ class ConsoleHandler(BaseHTTPRequestHandler):
         value = query.get(name, [None])[0]
         return None if value is None else float(value)
 
+    @staticmethod
+    def _optional_int(
+        query: dict[str, list[str]], name: str, default: int
+    ) -> int:
+        value = query.get(name, [None])[0]
+        return default if value is None else int(value)
+
     def _send_html(self, body: str) -> None:
         payload = body.encode("utf-8")
         self.send_response(200)
@@ -464,6 +685,12 @@ def _page(title: str, body: str) -> str:
 _FILTER_SCRIPT = """
 const rows=[...document.querySelectorAll('tbody tr')],search=document.querySelector('#search'),type=document.querySelector('#type'),scenario=document.querySelector('#scenario'),count=document.querySelector('#count');
 function apply(){const q=search.value.toLowerCase();let visible=0;rows.forEach(row=>{const ok=(!q||row.innerText.toLowerCase().includes(q))&&(!type.value||row.dataset.type===type.value)&&(!scenario.value||row.dataset.scenario===scenario.value);row.hidden=!ok;if(ok)visible++;});count.textContent=`显示 ${visible}/${rows.length}`;}[search,type,scenario].forEach(item=>item.addEventListener('input',apply));apply();
+"""
+
+
+_SUSPECT_SORT_SCRIPT = """
+const suspectSort=document.querySelector('#suspect-sort'),suspectList=document.querySelector('#suspect-list');
+if(suspectSort&&suspectList){const suspectItems=[...suspectList.querySelectorAll('.suspect')];function sortSuspects(){const mode=suspectSort.value;const ordered=[...suspectItems].sort((a,b)=>mode==='duration-desc'?Number(b.dataset.duration)-Number(a.dataset.duration)||Number(a.dataset.start)-Number(b.dataset.start):mode==='duration-asc'?Number(a.dataset.duration)-Number(b.dataset.duration)||Number(a.dataset.start)-Number(b.dataset.start):Number(a.dataset.start)-Number(b.dataset.start));ordered.forEach(item=>suspectList.appendChild(item));}suspectSort.addEventListener('input',sortSuspects);sortSuspects();}
 """
 
 
@@ -503,7 +730,7 @@ function schedule(){if(raf)return;raf=requestAnimationFrame(()=>{raf=null;render
 
 
 _STYLE = """
-:root{--ink:#17212b;--muted:#657286;--line:#dde4ec;--blue:#1d4ed8;--green:#15803d;--bg:#f4f7fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1560px;margin:auto;padding:28px}a{text-decoration:none}header{display:flex;justify-content:space-between;gap:22px;align-items:flex-start;margin-bottom:18px}h1{margin:0 0 5px;font-size:29px;letter-spacing:-.02em}h2{margin:0 0 5px}.eyebrow{margin:0 0 6px;color:#1d4ed8;font-size:11px;font-weight:800;letter-spacing:.14em}.muted,.path{color:var(--muted)}.path{max-width:950px;word-break:break-all}nav,.top-nav span{display:flex;gap:8px;flex-wrap:wrap}.top-nav{justify-content:space-between;margin-bottom:16px}.top-nav>a{color:var(--blue);font-weight:700}.button,button{display:inline-block;border:0;border-radius:8px;background:var(--blue);color:white;padding:9px 14px;cursor:pointer;font:inherit}.secondary{background:#64748b}.cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px;margin:16px 0}.cards.compact{grid-template-columns:repeat(4,minmax(140px,1fr))}.card,.panel,.plot-panel,.notice,.readout,details,aside{background:#fff;border:1px solid var(--line);border-radius:11px}.card{padding:16px}.card.accent{border-top:3px solid var(--blue)}.card span,.card small{display:block;color:var(--muted)}.card strong{display:block;font-size:24px;margin:3px 0}.panel,.notice,details{padding:18px;margin:14px 0}.open-file{display:flex;align-items:center;justify-content:space-between;gap:20px}.open-file form{display:flex;gap:8px;min-width:min(600px,55%)}.open-file input{flex:1}.controls,.range{display:flex;gap:10px;align-items:center;flex-wrap:wrap}input,select{border:1px solid #c8d2df;border-radius:7px;padding:9px 10px;background:white;font:inherit}.controls input{min-width:280px}.range label{display:flex;align-items:center;gap:5px}.range input{width:105px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:9px 10px;border-bottom:1px solid #e8edf2;text-align:left;white-space:nowrap}th{background:#f8fafc;position:sticky;top:0}td a{color:var(--blue);font-weight:650}.mini-button{display:inline-block;background:#e4e9ff;color:#3730a3!important;border-radius:7px;padding:5px 9px}.badge{display:inline-block;border-radius:999px;padding:3px 9px;font-weight:700}.badge.event{background:#dbeafe;color:#1d4ed8}.badge.normal{background:#dcfce7;color:#166534}.notice{background:#fffbeb;border-color:#fde68a}.danger{background:#fff1f2;border-color:#fecdd3}.formula{font:15px/2 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f8fafc;border:1px solid var(--line);padding:14px;border-radius:8px}.report{max-width:1120px}.legend{display:grid;grid-template-columns:repeat(2,auto);gap:5px 16px;background:white;border:1px solid var(--line);border-radius:9px;padding:10px 13px}.legend span{display:flex;align-items:center;gap:7px}.legend i{width:13px;height:3px;border-radius:2px}.workbench{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}aside{padding:12px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}.aside-title{display:flex;justify-content:space-between;align-items:baseline;padding:3px 5px 10px}.aside-title span{font-size:12px;color:var(--muted)}.suspect{display:block;color:var(--ink);border:1px solid #e3e8ef;border-left:4px solid #94a3b8;border-radius:8px;padding:9px 10px;margin:0 0 8px;background:#fff}.suspect:hover,.suspect.selected{border-color:#93b4e8;background:#eff6ff}.suspect-head{display:flex!important;justify-content:space-between;align-items:center}.suspect span,.suspect small{display:block}.suspect small{color:var(--muted);margin-top:3px}.suspect em{font-style:normal;font-size:11px;background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:999px}.suspect em.ok{background:#dcfce7;color:#166534}.empty{padding:26px 8px;text-align:center;color:var(--muted)}.empty b,.empty span{display:block}.charts{min-width:0}.plot-panel{padding:4px 9px;margin-bottom:12px;overflow:hidden}.readout{position:sticky;top:0;z-index:3;margin:12px 0;padding:10px 14px;box-shadow:0 3px 12px #0f172a0d;display:flex;gap:16px;flex-wrap:wrap}.readout span{color:#475569}details summary{font-size:17px;font-weight:700;cursor:pointer}@media(max-width:900px){main{padding:15px}.cards,.cards.compact{grid-template-columns:1fr 1fr}.workbench{grid-template-columns:1fr}aside{position:static;max-height:340px}header,.open-file{display:block}.open-file form{min-width:100%;margin-top:12px}.legend{margin-top:12px;width:max-content}}@media print{body{background:#fff}nav,.controls,.range,.open-file,aside{display:none}.panel,.card,.notice{break-inside:avoid}}
+:root{--ink:#17212b;--muted:#657286;--line:#dde4ec;--blue:#1d4ed8;--green:#15803d;--bg:#f4f7fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1560px;margin:auto;padding:28px}a{text-decoration:none}header{display:flex;justify-content:space-between;gap:22px;align-items:flex-start;margin-bottom:18px}h1{margin:0 0 5px;font-size:29px;letter-spacing:-.02em}h2{margin:0 0 5px}.eyebrow{margin:0 0 6px;color:#1d4ed8;font-size:11px;font-weight:800;letter-spacing:.14em}.muted,.path{color:var(--muted)}.path{max-width:950px;word-break:break-all}nav,.top-nav span{display:flex;gap:8px;flex-wrap:wrap}.top-nav{justify-content:space-between;margin-bottom:16px}.top-nav>a{color:var(--blue);font-weight:700}.button,button{display:inline-block;border:0;border-radius:8px;background:var(--blue);color:white;padding:9px 14px;cursor:pointer;font:inherit}.secondary{background:#64748b}.cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px;margin:16px 0}.cards.compact{grid-template-columns:repeat(4,minmax(140px,1fr))}.card,.panel,.plot-panel,.notice,.readout,details,aside{background:#fff;border:1px solid var(--line);border-radius:11px}.card{padding:16px}.card.accent{border-top:3px solid var(--blue)}.card span,.card small{display:block;color:var(--muted)}.card strong{display:block;font-size:24px;margin:3px 0}.panel,.notice,details{padding:18px;margin:14px 0}.open-file{display:flex;align-items:center;justify-content:space-between;gap:20px}.open-file form{display:flex;gap:8px;min-width:min(600px,55%)}.open-file input{flex:1}.controls,.range{display:flex;gap:10px;align-items:center;flex-wrap:wrap}input,select{border:1px solid #c8d2df;border-radius:7px;padding:9px 10px;background:white;font:inherit}.controls input{min-width:280px}.range label{display:flex;align-items:center;gap:5px}.range input{width:105px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:9px 10px;border-bottom:1px solid #e8edf2;text-align:left;white-space:nowrap}th{background:#f8fafc;position:sticky;top:0}td a{color:var(--blue);font-weight:650}.mini-button{display:inline-block;background:#e4e9ff;color:#3730a3!important;border-radius:7px;padding:5px 9px}.mini-button.disabled{background:#f1f5f9;color:#94a3b8!important;cursor:default}.badge{display:inline-block;border-radius:999px;padding:3px 9px;font-weight:700}.badge.event{background:#dbeafe;color:#1d4ed8}.badge.normal{background:#dcfce7;color:#166534}.notice{background:#fffbeb;border-color:#fde68a}.danger{background:#fff1f2;border-color:#fecdd3}.formula{font:15px/2 ui-monospace,SFMono-Regular,Consolas,monospace;background:#f8fafc;border:1px solid var(--line);padding:14px;border-radius:8px}.report{max-width:1120px}.legend{display:grid;grid-template-columns:repeat(2,auto);gap:5px 16px;background:white;border:1px solid var(--line);border-radius:9px;padding:10px 13px}.legend span{display:flex;align-items:center;gap:7px}.legend i{width:13px;height:3px;border-radius:2px}.workbench{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}aside{padding:12px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}.aside-title{display:flex;justify-content:space-between;align-items:center;padding:3px 5px 10px;gap:8px}.aside-title span{font-size:12px;color:var(--muted)}.aside-title select{padding:5px 7px;max-width:92px}.suspect{display:block;color:var(--ink);border:1px solid #e3e8ef;border-left:4px solid #94a3b8;border-radius:8px;padding:9px 10px;margin:0 0 8px;background:#fff}.suspect:hover,.suspect.selected{border-color:#93b4e8;background:#eff6ff}.suspect-head{display:flex!important;justify-content:space-between;align-items:center}.suspect span,.suspect small{display:block}.suspect small{color:var(--muted);margin-top:3px}.suspect em{font-style:normal;font-size:11px;background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:999px}.suspect em.ok{background:#dcfce7;color:#166534}.suspect em.pending{background:#fef3c7;color:#92400e}.empty{padding:26px 8px;text-align:center;color:var(--muted)}.empty b,.empty span{display:block}.charts{min-width:0}.plot-panel{padding:4px 9px;margin-bottom:12px;overflow:hidden}.readout{position:sticky;top:0;z-index:3;margin:12px 0;padding:10px 14px;box-shadow:0 3px 12px #0f172a0d;display:flex;gap:16px;flex-wrap:wrap}.readout span{color:#475569}.cell-sub{display:block;color:var(--muted);font-weight:400;max-width:290px;overflow:hidden;text-overflow:ellipsis}.wheel-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}.cancellation-table tbody tr:hover{background:#f8fbff}.cancellation-table .rank{color:var(--muted);font-variant-numeric:tabular-nums}.empty-row td{text-align:center;color:var(--muted);padding:30px}.cancellation-controls select{min-width:130px}.pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:14px 0 4px;color:var(--muted)}details summary{font-size:17px;font-weight:700;cursor:pointer}@media(max-width:900px){main{padding:15px}.cards,.cards.compact{grid-template-columns:1fr 1fr}.workbench{grid-template-columns:1fr}aside{position:static;max-height:340px}header,.open-file{display:block}.open-file form{min-width:100%;margin-top:12px}.legend{margin-top:12px;width:max-content}.cancellation-controls input{min-width:100%}.pagination{justify-content:space-between}}@media print{body{background:#fff}nav,.controls,.range,.open-file,aside{display:none}.panel,.card,.notice{break-inside:avoid}}
 """
 
 
