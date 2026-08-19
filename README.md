@@ -37,7 +37,9 @@ python3 evaluate_0818_algorithms.py --jobs 4
 - `wheel_speed_only_blowout_detector`：双空间物理硬门限，支持平稳或明确制动
   工况下的独立持续确认；
 - `quant_wheel_blowout_detector`：Hadamard 三因子、在线协方差、匹配滤波和
-  CUSUM 风险分，增加 0818 小冲击触发带、持续物理幅值和单轮指纹纯度约束。
+  CUSUM 风险分，增加 0818 小冲击触发带、持续物理幅值和单轮指纹纯度约束；
+  完整算法文档见
+  [`quant_wheel_blowout_detector/README.md`](quant_wheel_blowout_detector/README.md)。
 
 旧数据集评估入口仍保留为：
 
