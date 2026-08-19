@@ -1,6 +1,6 @@
 # 小波形态爆胎检测器
 
-## 0818 新采数据 Display
+## 四轮轮速 Quant 回放控制台
 
 `0818/` 原始文件每帧由四行 FL/FR/RL/RR 齿时间戳和一行车辆信号组成，
 车辆信号行的最后一个值作为爆胎信号位。以下命令会做 48 齿相位校正，并只
@@ -13,7 +13,10 @@ python3 serve_0818_console.py
 浏览器访问 `http://127.0.0.1:8773`。控制台支持记录列表、上一条/下一条、
 时间窗口和候选区间跳转；展示固定使用当前 `quant` 算法。
 原始爆胎信号逐帧显示；事件时刻取首段持续至少 20 帧的高电平，以忽略文件
-开头的短暂残留信号。首页可切换到 `RobustData 正常道路`，直接读取
+开头的短暂残留信号。首页可切换到 `0819 新采数据`，展示当前 5 条
+与 0818 同格式的原始记录（共 34,100 帧）；这些文件的帧末爆胎信号均为 0，
+当前 quant 也均未报警，因此按未标注爆胎数据展示。还可切换到
+`RobustData 正常道路`，直接读取
 `speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
 轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
 所选 Plotly 图窗的曲线。开始/结束时间不会裁剪左侧“全记录信号与候选”，
@@ -26,31 +29,28 @@ python3 serve_0818_console.py
 ### 数据口径
 
 当前页面和 `quant` 检测器仍然只使用 FL/FR/RL/RR 四轮轮速。
-`0818`、`RobustData` 和 `LY` 只是三个可切换的数据集，不会把胎压信号输入算法。
+`0818`、`0819`、`RobustData` 和 `LY` 只是四个可切换的数据集，不会把胎压信号输入算法。
 LY 图中的黑色爆胎信号只用于真值对照和事件定位。
 
 ### 在另一台电脑启动
 
-PR 尚未合并时，需要显式切换到功能分支，否则 `main` 只会显示旧版内容：
-
 ```bash
 git clone https://github.com/dinnnnnner/haar.git
 cd haar
-git fetch origin
-git switch agent/add-robust-replay-data
-git pull
+git switch main
+git pull --ff-only origin main
 python3 serve_0818_console.py --host 0.0.0.0 --port 8773
 ```
 
-合并 PR 后可改为 `git switch main && git pull`，再执行同一启动命令。
 本机浏览器访问 `http://127.0.0.1:8773`；局域网内其他设备访问
 `http://<启动服务的电脑 IP>:8773`。页面顶部应显示 `0818 爆胎数据`、
-`RobustData 正常道路` 和 `LY 实车爆胎` 三个页签。
+`0819 新采数据`、`RobustData 正常道路` 和 `LY 实车爆胎` 四个页签。
 
 如评价文件位于其他位置，可显式指定：
 
 ```bash
 python3 serve_0818_console.py \
+  --input-0819-dir /path/to/0819 \
   --robust-evaluation /path/to/robust_evaluation.csv \
   --ly-manifest /path/to/ly/manifest.csv
 ```

@@ -78,6 +78,9 @@ class Serve0818ConsoleTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         root = Path(__file__).resolve().parent
         cls.state = ConsoleState(root / "0818")
+        cls.state_0819 = ConsoleState(
+            root / "0818", input_0819_dir=root / "0819"
+        )
         cls.robust_state = ConsoleState(
             root / "0818",
             robust_evaluation=(
@@ -118,6 +121,34 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn('const MODE="quant"', page)
         self.assertNotIn("<span>wheel_only</span>", page)
         self.assertNotIn("<canvas", page)
+
+    def test_0819_index_summary_and_detail_cover_all_new_records(self) -> None:
+        summary = self.state_0819.summary("0819")
+        self.assertEqual(len(summary["cases"]), 5)
+        self.assertEqual(sum(case["frames"] for case in summary["cases"]), 34_100)
+        self.assertTrue(
+            all(case["signal_event_time_s"] is None for case in summary["cases"])
+        )
+        self.assertTrue(
+            all(
+                all(value is None for value in case["quant_first_alarms_s"].values())
+                for case in summary["cases"]
+            )
+        )
+        page = self.state_0819.render_index("0819")
+        self.assertIn("0819 Quant 回放控制台", page)
+        self.assertIn("34,100 帧", page)
+        self.assertIn("20260819152701", page)
+        self.assertIn("20260819_yacc_max", page)
+        self.assertIn("0/5", page)
+        detail = self.state_0819.render_case(
+            "20260819152701", 120.0, 130.0, "quant", "0819"
+        )
+        self.assertIn("0819 新采数据", detail)
+        self.assertIn("原始帧末信号均为 0", detail)
+        self.assertIn("120.00–130.00s", detail)
+        self.assertIn("dataset=0819", detail)
+        self.assertIn('const MODE="quant"', detail)
 
     def test_robust_index_and_detail_use_current_detectors(self) -> None:
         summary = self.robust_state.summary("robust")
