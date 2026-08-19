@@ -80,6 +80,60 @@ def _alarm_text(values: Sequence[float | None], event: float | None) -> str:
     return "、".join(parts) if parts else "未报警"
 
 
+def _curve_guide(algorithm: str) -> str:
+    wheel_items = "".join(
+        f"<span class='guide-item'><i class='color-dot' style='--guide-color:{color}'></i>"
+        f"{name}</span>"
+        for name, color in zip(WHEEL_NAMES, WHEEL_COLORS)
+    )
+    sections = [f"<div class='guide-group'><b>轮位颜色</b>{wheel_items}</div>"]
+    if algorithm != "quant":
+        sections.append(
+            "<div class='guide-group'><b>wheel_only 证据</b>"
+            "<span class='guide-item'><i class='line-sample solid'></i>实线：各轮逐轮值</span>"
+            "<span class='guide-item'><i class='line-sample dashed purple'></i>紫虚线：对角 FL+RR</span>"
+            "<span class='guide-item'><i class='line-sample dashed teal'></i>青虚线：对角 FR+RL</span>"
+            "<span class='guide-note'>持续证据图为增益，触发证据图为边沿</span>"
+            "</div>"
+        )
+    if algorithm != "wheel":
+        sections.append(
+            "<div class='guide-group'><b>quant 因子残差</b>"
+            "<span class='guide-item'><i class='color-dot' style='--guide-color:#0891b2'></i>左右 s</span>"
+            "<span class='guide-item'><i class='color-dot' style='--guide-color:#7c3aed'></i>前后 a</span>"
+            "<span class='guide-item'><i class='color-dot' style='--guide-color:#db2777'></i>对角 d</span>"
+            "<span class='guide-item'><i class='line-sample solid'></i>实线：残差</span>"
+            "<span class='guide-item'><i class='line-sample dashed'></i>虚线：瞬时边沿</span>"
+            "</div>"
+            "<div class='guide-group'><b>quant 逐轮证据</b>"
+            "<span>物理投影：实线 level（持续量）/ 虚线 edge（边沿）</span>"
+            "<span>匹配分：实线 shock（冲击）/ 虚线 level（持续）</span>"
+            "<span>隔离度：实线 shock（冲击）/ 虚线 level（持续）</span>"
+            "<span>风险分：实线 risk（综合风险）</span>"
+            "</div>"
+        )
+    sections.append(
+        "<div class='guide-group'><b>状态图</b>"
+        "<span class='guide-item'><i class='line-sample candidate'></i>细线：候选</span>"
+        "<span class='guide-item'><i class='line-sample alarm'></i>粗线：锁存报警</span>"
+        "<span class='guide-item'><i class='line-sample signal'></i>黑线：原始爆胎信号</span>"
+        "</div>"
+    )
+    sections.append(
+        "<div class='guide-group'><b>参考线</b>"
+        "<span class='guide-item'><i class='line-sample threshold'></i>横向点线：判定门限</span>"
+        "<span class='guide-item'><i class='line-sample event'></i>红色竖虚线：爆胎时刻</span>"
+        "<span class='guide-note'>W/Q 竖点线分别是两套算法的首次报警</span>"
+        "</div>"
+    )
+    return (
+        "<details class='curve-guide' open><summary>曲线说明"
+        "<span>颜色代表轮位，线型代表指标</span></summary>"
+        + "".join(sections)
+        + "</details>"
+    )
+
+
 class ConsoleState:
     def __init__(self, input_dir: Path, *, max_window_s: float = 120.0) -> None:
         self.input_dir = input_dir.resolve()
@@ -218,6 +272,7 @@ class ConsoleState:
 </form>
 <div class='workbench'><aside>{sidebar}</aside><div class='charts'>
 <div class='readout' id='readout'>在 Plotly 图上悬停，查看同一时刻的四轮证据</div>
+{_curve_guide(algorithm)}
 <section class='plot-panel'><div id='plot'></div></section></div></div>
 <script>const D={json.dumps(payload, ensure_ascii=False, separators=(',', ':'))};const MODE={json.dumps(algorithm)};const EVENT={json.dumps(event)};const N={json.dumps(WHEEL_NAMES)};const COLORS={json.dumps(WHEEL_COLORS)};{_CHART_SCRIPT}</script>
 """,
@@ -412,17 +467,17 @@ function axes(row){const suffix=row===1?'':String(row);return {xaxis:'x'+suffix,
 function add(row,y,name,color,opts={}){traces.push({type:'scattergl',mode:'lines',x:D.times,y,name,...axes(row),legendgroup:opts.legendgroup||name,showlegend:opts.showlegend??false,connectgaps:false,line:{color,width:opts.width||1.25,dash:opts.dash||'solid'},customdata:opts.customdata,hovertemplate:opts.hovertemplate||`${name}: %{y:.3f}<extra></extra>`})}
 N.forEach((name,w)=>add(1,D.wheels[w],name,COLORS[w],{showlegend:true,legendgroup:name,hovertemplate:`${name} 轮速: %{y:.4f} rad/s<extra></extra>`}));
 if(wheelGainRow!==null){
- N.forEach((name,w)=>add(wheelGainRow,D.wheel_gains[w],name+' individual',COLORS[w],{legendgroup:name}));
- add(wheelGainRow,D.wheel_diagonal[0],'D FL+RR','#7c3aed',{dash:'dash'});add(wheelGainRow,D.wheel_diagonal[1],'D FR+RL','#0f766e',{dash:'dash'});
- N.forEach((name,w)=>add(wheelEdgeRow,D.wheel_edges[w],name+' edge',COLORS[w],{legendgroup:name}));
- add(wheelEdgeRow,D.wheel_diagonal_edges[0],'D FL+RR edge','#7c3aed',{dash:'dash'});add(wheelEdgeRow,D.wheel_diagonal_edges[1],'D FR+RL edge','#0f766e',{dash:'dash'});
+ N.forEach((name,w)=>add(wheelGainRow,D.wheel_gains[w],name+' 逐轮持续增益',COLORS[w],{legendgroup:name}));
+ add(wheelGainRow,D.wheel_diagonal[0],'对角 FL+RR 持续增益','#7c3aed',{dash:'dash'});add(wheelGainRow,D.wheel_diagonal[1],'对角 FR+RL 持续增益','#0f766e',{dash:'dash'});
+ N.forEach((name,w)=>add(wheelEdgeRow,D.wheel_edges[w],name+' 逐轮触发边沿',COLORS[w],{legendgroup:name}));
+ add(wheelEdgeRow,D.wheel_diagonal_edges[0],'对角 FL+RR 触发边沿','#7c3aed',{dash:'dash'});add(wheelEdgeRow,D.wheel_diagonal_edges[1],'对角 FR+RL 触发边沿','#0f766e',{dash:'dash'});
 }
 if(quantFactorRow!==null){
- FACTOR_NAMES.forEach((name,f)=>{add(quantFactorRow,D.quant_factor_residuals[f],name,FACTOR_COLORS[f],{showlegend:true,legendgroup:'factor-'+f,hovertemplate:`${name} residual: %{y:.4f}%<extra></extra>`});add(quantFactorRow,D.quant_factor_edges[f],name+' edge',FACTOR_COLORS[f],{dash:'dash',legendgroup:'factor-'+f,hovertemplate:`${name} edge: %{y:.4f}%<extra></extra>`})});
- N.forEach((name,w)=>{add(quantPhysicalRow,D.quant_physical[w],name+' level',COLORS[w],{legendgroup:name});add(quantPhysicalRow,D.quant_physical_edges[w],name+' edge',COLORS[w],{dash:'dash',legendgroup:name});add(quantZRow,D.quant_shock_z[w],name+' shock z',COLORS[w],{legendgroup:name});add(quantZRow,D.quant_level_z[w],name+' level z',COLORS[w],{dash:'dash',legendgroup:name});add(quantIsolationRow,D.quant_shock_isolation[w],name+' shock isolation',COLORS[w],{legendgroup:name});add(quantIsolationRow,D.quant_level_isolation[w],name+' level isolation',COLORS[w],{dash:'dash',legendgroup:name});const custom=D.times.map((_,i)=>[D.quant_cusum[w][i],D.quant_persistence[w][i],D.quant_states[w][i],D.quant_leading_wheels[i],D.quant_leading_margins[i]]);add(quantRiskRow,D.quant_risk[w],name+' risk',COLORS[w],{legendgroup:name,customdata:custom,hovertemplate:`${name} risk: %{y:.1f}<br>CUSUM=%{customdata[0]:.2f}<br>persistence=%{customdata[1]:.2f}<br>状态=%{customdata[2]}<br>领先轮=%{customdata[3]}<br>领先差=%{customdata[4]:.1f}<extra></extra>`})});
+ FACTOR_NAMES.forEach((name,f)=>{add(quantFactorRow,D.quant_factor_residuals[f],name+' 因子残差',FACTOR_COLORS[f],{showlegend:true,legendgroup:'factor-'+f});add(quantFactorRow,D.quant_factor_edges[f],name+' 因子瞬时边沿',FACTOR_COLORS[f],{dash:'dash',legendgroup:'factor-'+f})});
+ N.forEach((name,w)=>{add(quantPhysicalRow,D.quant_physical[w],name+' 物理指纹 level',COLORS[w],{legendgroup:name});add(quantPhysicalRow,D.quant_physical_edges[w],name+' 物理指纹 edge',COLORS[w],{dash:'dash',legendgroup:name});add(quantZRow,D.quant_shock_z[w],name+' 冲击匹配分 shock z',COLORS[w],{legendgroup:name});add(quantZRow,D.quant_level_z[w],name+' 持续匹配分 level z',COLORS[w],{dash:'dash',legendgroup:name});add(quantIsolationRow,D.quant_shock_isolation[w],name+' 冲击隔离度',COLORS[w],{legendgroup:name});add(quantIsolationRow,D.quant_level_isolation[w],name+' 持续隔离度',COLORS[w],{dash:'dash',legendgroup:name});const custom=D.times.map((_,i)=>[D.quant_cusum[w][i],D.quant_persistence[w][i],D.quant_states[w][i],D.quant_leading_wheels[i],D.quant_leading_margins[i]]);add(quantRiskRow,D.quant_risk[w],name+' 风险分',COLORS[w],{legendgroup:name,customdata:custom,hovertemplate:`${name} 风险分: %{y:.1f}<br>CUSUM=%{customdata[0]:.2f}<br>持续度=%{customdata[1]:.2f}<br>状态=%{customdata[2]}<br>领先轮=%{customdata[3]}<br>领先差=%{customdata[4]:.1f}<extra></extra>`})});
 }
-function addState(row,candidates,alarms,prefix){add(row,D.signal.map(v=>v?4.82:4.55),'爆胎信号位','#111827',{width:2.2,customdata:D.signal,hovertemplate:'爆胎信号位: %{customdata}<extra></extra>'});N.forEach((name,w)=>{const level=w+.38;add(row,candidates[w].map(v=>v?level:null),prefix+' '+name+' candidate',COLORS[w]+'88',{width:3});add(row,alarms[w].map(v=>v?level:null),prefix+' '+name+' alarm',COLORS[w],{width:7})})}
-if(wheelStateRow!==null)addState(wheelStateRow,D.wheel_candidates,D.wheel_alarms,'W');if(quantStateRow!==null)addState(quantStateRow,D.quant_candidates,D.quant_alarms,'Q');
+function addState(row,candidates,alarms,prefix){add(row,D.signal.map(v=>v?4.82:4.55),'原始爆胎信号','#111827',{width:2.2,customdata:D.signal,hovertemplate:'原始爆胎信号: %{customdata}<extra></extra>'});N.forEach((name,w)=>{const level=w+.38;add(row,candidates[w].map(v=>v?level:null),prefix+' '+name+' 候选',COLORS[w]+'88',{width:3});add(row,alarms[w].map(v=>v?level:null),prefix+' '+name+' 锁存报警',COLORS[w],{width:7})})}
+if(wheelStateRow!==null)addState(wheelStateRow,D.wheel_candidates,D.wheel_alarms,'wheel_only');if(quantStateRow!==null)addState(quantStateRow,D.quant_candidates,D.quant_alarms,'quant');
 const layout={template:'plotly_white',height:Math.max(1000,rowCount*250),hovermode:'x unified',dragmode:'pan',grid:{rows:rowCount,columns:1,pattern:'independent',roworder:'top to bottom'},legend:{orientation:'h',x:0,y:1.022},margin:{l:82,r:38,t:82,b:62},uirevision:MODE,barmode:'overlay',shapes:[],annotations:[]};
 for(let r=1;r<=rowCount;r++){const suffix=r===1?'':String(r);layout['xaxis'+suffix]={matches:r===1?undefined:'x',showticklabels:r===rowCount,title:r===rowCount?'时间 / s':undefined,rangeslider:{visible:r===rowCount,thickness:.045}};layout['yaxis'+suffix]={title:titles[r-1],automargin:true}}
 for(const stateRow of [wheelStateRow,quantStateRow])if(stateRow!==null){const suffix=stateRow===1?'':String(stateRow);layout['yaxis'+suffix]={title:'轮位 / 信号',range:[-.1,5.08],tickmode:'array',tickvals:[.38,1.38,2.38,3.38,4.82],ticktext:['FL','FR','RL','RR','爆胎信号']}}
@@ -438,6 +493,7 @@ Plotly.newPlot(plot,traces,layout,config).then(()=>{plot.on('plotly_hover',event
 
 _STYLE = """
 :root{--ink:#17212b;--muted:#657286;--line:#dde4ec;--blue:#1d4ed8;--bg:#f4f7fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1560px;margin:auto;padding:28px}a{text-decoration:none;color:var(--blue);font-weight:700}header{display:flex;justify-content:space-between;gap:22px;align-items:flex-start;margin-bottom:18px}h1{margin:0 0 5px;font-size:29px}.eyebrow{margin:0 0 6px;color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.14em}.muted,.path{color:var(--muted)}.path{word-break:break-all}.top-nav{display:flex;justify-content:space-between;margin-bottom:16px}.top-nav span,nav{display:flex;gap:8px}.button,button{display:inline-block;border:0;border-radius:8px;background:var(--blue);color:white;padding:9px 14px;cursor:pointer;font:inherit}.secondary{background:#64748b}.cards{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px;margin:16px 0}.card,.panel,.plot-panel,.notice,.readout,aside{background:#fff;border:1px solid var(--line);border-radius:11px}.card{padding:16px}.card.accent{border-top:3px solid var(--blue)}.card span,.card small{display:block;color:var(--muted)}.card strong{display:block;font-size:21px;margin:3px 0}.panel,.notice{padding:18px;margin:14px 0}.controls,.range{display:flex;gap:10px;align-items:center;flex-wrap:wrap}input,select{border:1px solid #c8d2df;border-radius:7px;padding:9px 10px;background:white;font:inherit}.controls input{min-width:300px}.range label{display:flex;align-items:center;gap:6px}.range input{width:110px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;border-bottom:1px solid #e8edf2;text-align:left;white-space:nowrap}th{background:#f8fafc}.mini-button{display:inline-block;background:#e4e9ff;color:#3730a3;border-radius:7px;padding:5px 9px}.cell-sub{display:block;color:var(--muted);font-weight:400}.notice{background:#fffbeb;border-color:#fde68a}.workbench{display:grid;grid-template-columns:310px minmax(0,1fr);gap:14px;align-items:start}aside{padding:12px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}.aside-title{display:flex;justify-content:space-between;padding:4px 5px 11px}.aside-title span{color:var(--muted);font-size:12px}.suspect{display:block;color:var(--ink);border:1px solid #e3e8ef;border-left:4px solid #94a3b8;border-radius:8px;padding:9px 10px;margin-bottom:8px;background:#fff}.suspect:hover,.suspect.selected{border-color:#93b4e8;background:#eff6ff}.suspect-head{display:flex;justify-content:space-between}.suspect span,.suspect small{display:block}.suspect small{color:var(--muted)}.suspect em{font-style:normal;font-size:11px;background:#f1f5f9;color:#64748b;border-radius:999px;padding:2px 6px}.suspect em.ok{background:#dcfce7;color:#166534}.suspect em.signal{background:#fee2e2;color:#b91c1c}.event-link{border-left-color:#dc2626}.empty{text-align:center;color:var(--muted);padding:25px 4px}.charts{min-width:0}.plot-panel{padding:4px 9px;margin-bottom:12px;overflow:hidden}.plot-panel #plot{width:100%;min-height:950px}.readout{position:sticky;top:0;z-index:3;padding:10px 14px;margin-bottom:12px;box-shadow:0 3px 12px #0f172a0d;display:flex;gap:15px;flex-wrap:wrap}.readout span{color:#475569}@media(max-width:900px){main{padding:15px}.cards{grid-template-columns:1fr 1fr}.workbench{grid-template-columns:1fr}aside{position:static;max-height:360px}header{display:block}.controls input{min-width:100%}}
+.curve-guide{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:12px}.curve-guide summary{cursor:pointer;font-weight:750;list-style:none}.curve-guide summary::-webkit-details-marker{display:none}.curve-guide summary:before{content:'▾';display:inline-block;margin-right:7px;color:var(--blue)}.curve-guide:not([open]) summary:before{content:'▸'}.curve-guide summary span{margin-left:9px;color:var(--muted);font-size:12px;font-weight:400}.guide-group{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding-top:10px}.guide-group+.guide-group{border-top:1px solid #eef2f6;margin-top:9px}.guide-group>b{min-width:130px}.guide-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.guide-note{color:var(--muted);font-size:12px}.color-dot{width:10px;height:10px;border-radius:50%;background:var(--guide-color);box-shadow:0 0 0 2px #e2e8f0}.line-sample{display:inline-block;width:30px;height:0;border-top:2px solid #475569}.line-sample.dashed{border-top-style:dashed}.line-sample.purple{border-color:#7c3aed}.line-sample.teal{border-color:#0f766e}.line-sample.candidate{border-top-width:3px;opacity:.5}.line-sample.alarm{border-top-width:7px}.line-sample.signal{border-color:#111827}.line-sample.threshold{border-top-style:dotted}.line-sample.event{width:12px;height:18px;border-top:0;border-left:2px dashed #dc2626}@media(max-width:900px){.guide-group>b{min-width:100%}}
 """
 
 
