@@ -55,6 +55,9 @@
         "wrong_wheel_false_alarm_samples": 0,
         "mean_delay_s": 0.9499999999999957,
         "max_delay_s": 0.9499999999999957,
+        "mean_delay_frames": 95,
+        "max_delay_frames": 95,
+        "detected_within_20_frames": 0,
         "misses": [
           "60kpa_RRBlowOut",
           "Brk_RRBlowOut"
@@ -107,6 +110,9 @@
         "wrong_wheel_false_alarm_samples": 0,
         "mean_delay_s": 0.8433333333333337,
         "max_delay_s": 0.9399999999999977,
+        "mean_delay_frames": 84.33333333333333,
+        "max_delay_frames": 94,
+        "detected_within_20_frames": 0,
         "misses": []
       },
       "normal_road_replay": {
@@ -170,6 +176,9 @@
         "wrong_wheel_false_alarm_samples": 0,
         "mean_delay_s": null,
         "max_delay_s": null,
+        "mean_delay_frames": null,
+        "max_delay_frames": null,
+        "detected_within_20_frames": 0,
         "misses": [
           "60kpa_RRBlowOut",
           "Acc_RRBlowOut",
@@ -206,8 +215,8 @@
         "cusum_drift_z": 1.0,
         "persistence_decay": 0.985,
         "persistence_drift_z": 0.5,
-        "confirm_frames": 55,
-        "persistence_tail_frames": 40,
+        "confirm_frames": 16,
+        "persistence_tail_frames": 16,
         "candidate_timeout_frames": 120,
         "min_physical_peak": 0.006,
         "min_physical_peak_with_common_motion": 0.01,
@@ -220,7 +229,7 @@
         "level_isolation_floor_z": 1.0,
         "min_isolation_fraction": 0.825,
         "min_median_level_z": 1.5,
-        "max_peer_physical_median": 0.0015,
+        "max_peer_physical_median": 0.0,
         "min_median_risk": 52.5,
         "min_peak_risk": 82.0,
         "max_common_log_range": 0.05,
@@ -235,8 +244,11 @@
         "detected_within_2s": 3,
         "pre_event_false_alarm_samples": 0,
         "wrong_wheel_false_alarm_samples": 0,
-        "mean_delay_s": 0.7866666666666665,
-        "max_delay_s": 0.8499999999999943,
+        "mean_delay_s": 0.3966666666666659,
+        "max_delay_s": 0.45999999999999375,
+        "mean_delay_frames": 39.666666666666664,
+        "max_delay_frames": 46,
+        "detected_within_20_frames": 0,
         "misses": []
       },
       "normal_road_replay": {

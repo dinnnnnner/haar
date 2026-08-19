@@ -54,6 +54,8 @@ def algorithm_configs() -> dict[str, WheelSpeedBlowoutConfig | QuantBlowoutConfi
         ),
         "wheelonly_0818": WheelSpeedBlowoutConfig(),
         "quant_previous": QuantBlowoutConfig(
+            confirm_frames=55,
+            persistence_tail_frames=40,
             shock_trigger_z=5.0,
             max_shock_trigger_z=1.0e9,
             shock_isolation_z=2.0,
@@ -125,6 +127,11 @@ def evaluate_0818_case(path: Path, detection_window_s: float = 2.0) -> list[dict
             if target_alarm is None or target_alarm < event_time
             else target_alarm - event_time
         )
+        delay_frames = (
+            None
+            if delay is None
+            else int(round(delay * configs[name].sample_rate_hz))
+        )
         rows.append(
             {
                 "algorithm": name,
@@ -138,6 +145,13 @@ def evaluate_0818_case(path: Path, detection_window_s: float = 2.0) -> list[dict
                     and not wrong_wheel
                 ),
                 "delay_s": delay,
+                "delay_frames": delay_frames,
+                "detected_within_20_frames": (
+                    delay_frames is not None
+                    and delay_frames <= 20
+                    and not pre_event
+                    and not wrong_wheel
+                ),
                 "pre_event_false_alarm": pre_event,
                 "wrong_wheel_false_alarm": wrong_wheel,
                 "alarm_wheels": ";".join(
@@ -226,6 +240,11 @@ def _summary(
             for row in positives
             if row["detected_within_2s"] and row["delay_s"] is not None
         ]
+        delay_frames = [
+            int(row["delay_frames"])
+            for row in positives
+            if row["detected_within_2s"] and row["delay_frames"] is not None
+        ]
         algorithms[name] = {
             "config": asdict(configs[name]),
             "0818_positive_replay": {
@@ -241,6 +260,12 @@ def _summary(
                 ),
                 "mean_delay_s": mean(delays) if delays else None,
                 "max_delay_s": max(delays, default=None),
+                "mean_delay_frames": mean(delay_frames) if delay_frames else None,
+                "max_delay_frames": max(delay_frames, default=None),
+                "detected_within_20_frames": sum(
+                    bool(row["detected_within_20_frames"])
+                    for row in positives
+                ),
                 "misses": [
                     row["case"] for row in positives if not row["detected_within_2s"]
                 ],

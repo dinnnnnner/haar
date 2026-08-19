@@ -46,8 +46,12 @@ class QuantBlowoutConfig:
     persistence_decay: float = 0.985
     persistence_drift_z: float = 0.5
 
-    confirm_frames: int = 55
-    persistence_tail_frames: int = 40
+    # A 16-frame tail is the shortest setting that kept all 37 RobustData
+    # records alarm-free in the 0818 search.  Shorter tails admitted transient
+    # single-wheel road shocks.  Candidate acquisition still supplies the
+    # shock edge; this window confirms that the isolated level persists.
+    confirm_frames: int = 16
+    persistence_tail_frames: int = 16
     candidate_timeout_frames: int = 120
     min_physical_peak: float = 0.0060
     min_physical_peak_with_common_motion: float = 0.0100
@@ -60,7 +64,11 @@ class QuantBlowoutConfig:
     level_isolation_floor_z: float = 1.0
     min_isolation_fraction: float = 0.825
     min_median_level_z: float = 1.5
-    max_peer_physical_median: float = 0.0015
+    # A true single-wheel signature leaves every peer projection non-positive
+    # over the confirmation tail.  Requiring that sign, rather than a small
+    # positive tolerance, separates the short 0818 events from RobustData
+    # multi-wheel road impacts without extending confirmation time.
+    max_peer_physical_median: float = 0.0
     min_median_risk: float = 52.5
     min_peak_risk: float = 82.0
     max_common_log_range: float = 0.050

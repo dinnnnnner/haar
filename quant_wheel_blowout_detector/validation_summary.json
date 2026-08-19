@@ -19,12 +19,15 @@
     "physical_target_wheels": ["RR"],
     "detected_within_2s": 3,
     "wrong_wheel_or_pre_event_alarms": 0,
-    "mean_confirmation_delay_s": 0.7866666666666665,
-    "max_confirmation_delay_s": 0.8499999999999943,
+    "mean_confirmation_delay_s": 0.3966666666666659,
+    "max_confirmation_delay_s": 0.45999999999999375,
+    "mean_confirmation_delay_frames": 39.666666666666664,
+    "max_confirmation_delay_frames": 46,
+    "detected_within_20_frames": 0,
     "cases": [
-      {"sample_id": "60kpa_RRBlowOut", "confirmation_delay_s": 0.8499999999999943},
-      {"sample_id": "Acc_RRBlowOut", "confirmation_delay_s": 0.7999999999999972},
-      {"sample_id": "Brk_RRBlowOut", "confirmation_delay_s": 0.710000000000008}
+      {"sample_id": "60kpa_RRBlowOut", "confirmation_delay_s": 0.45999999999999375, "confirmation_delay_frames": 46},
+      {"sample_id": "Acc_RRBlowOut", "confirmation_delay_s": 0.4099999999999966, "confirmation_delay_frames": 41},
+      {"sample_id": "Brk_RRBlowOut", "confirmation_delay_s": 0.3200000000000074, "confirmation_delay_frames": 32}
     ]
   },
   "real_normal_road_replay": {
@@ -38,9 +41,10 @@
     "optimized_0818_detection": "3/3",
     "changes": [
       "use a 3.0 to 4.5 covariance-normalized shock trigger band",
+      "reduce confirmation from 55 to 16 candidate frames",
       "retain the 0.0039 physical edge and 0.006 persistent physical level",
       "add coherent-braking-only common-speed tolerance",
-      "require raw Hadamard single-wheel purity across the three peer projections",
+      "require every peer Hadamard projection median to remain non-positive",
       "reject high-shock low-persistence wheel-slip transients"
     ],
     "unified_report": "0818_algorithm_evaluation/summary.json"
@@ -49,6 +53,7 @@
     "development replay, not an independent locked-parameter blind test",
     "0818 positive samples cover RR only",
     "40kph labeling and wheel-speed feedback are deferred",
+    "a 20-frame end-to-end target was not separable from RobustData road shocks",
     "risk score is evidence strength, not a calibrated probability"
   ]
 }

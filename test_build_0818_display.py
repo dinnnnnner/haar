@@ -98,6 +98,8 @@ class Evaluate0818AlgorithmsTests(unittest.TestCase):
                 self.assertTrue(rows[algorithm]["detected_within_2s"])
                 self.assertFalse(rows[algorithm]["pre_event_false_alarm"])
                 self.assertFalse(rows[algorithm]["wrong_wheel_false_alarm"])
+            self.assertLessEqual(rows["quant_0818"]["delay_frames"], 46)
+            self.assertFalse(rows["quant_0818"]["detected_within_20_frames"])
 
 
 if __name__ == "__main__":
