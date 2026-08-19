@@ -16,7 +16,8 @@ python3 serve_0818_console.py
 开头的短暂残留信号。首页可切换到 `RobustData 正常道路`，直接读取
 `speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
 轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
-所选窗口。还可切换到 `LY 实车爆胎`，展示
+所选 Plotly 图窗的曲线。开始/结束时间不会裁剪左侧“全记录信号与候选”，
+候选区间和首次报警会一直保留。还可切换到 `LY 实车爆胎`，展示
 `augmented_event_dataset_v2/manifest.csv` 中 8 条未增强的原始事件裁剪；红线为 RR
 爆胎真值，黑线为原始传感器信号，列表同时显示当前 quant 实际回放结果。
 当前 0818 参数在 LY 上检出 2/8（E01、E08）；页面不沿用旧评价表中的历史结果，
