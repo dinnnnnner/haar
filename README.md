@@ -22,6 +22,30 @@ python3 serve_0818_console.py
 当前 0818 参数在 LY 上检出 2/8（E01、E08）；页面不沿用旧评价表中的历史结果，
 避免列表与详情曲线不一致。每个子图左上角均显示指标标题，纵轴保留单位。
 
+### 数据口径
+
+当前页面和 `quant` 检测器仍然只使用 FL/FR/RL/RR 四轮轮速。
+`0818`、`RobustData` 和 `LY` 只是三个可切换的数据集，不会把胎压信号输入算法。
+LY 图中的黑色爆胎信号只用于真值对照和事件定位。
+
+### 在另一台电脑启动
+
+PR 尚未合并时，需要显式切换到功能分支，否则 `main` 只会显示旧版内容：
+
+```bash
+git clone https://github.com/dinnnnnner/haar.git
+cd haar
+git fetch origin
+git switch agent/add-robust-replay-data
+git pull
+python3 serve_0818_console.py --host 0.0.0.0 --port 8773
+```
+
+合并 PR 后可改为 `git switch main && git pull`，再执行同一启动命令。
+本机浏览器访问 `http://127.0.0.1:8773`；局域网内其他设备访问
+`http://<启动服务的电脑 IP>:8773`。页面顶部应显示 `0818 爆胎数据`、
+`RobustData 正常道路` 和 `LY 实车爆胎` 三个页签。
+
 如评价文件位于其他位置，可显式指定：
 
 ```bash
