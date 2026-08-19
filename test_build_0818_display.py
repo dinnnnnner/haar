@@ -55,12 +55,19 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("quant：Hadamard 因子残差", page)
         self.assertIn("quant：轮位隔离度", page)
         self.assertIn("CUSUM", page)
+        self.assertIn("曲线说明", page)
+        self.assertIn("逐轮持续增益", page)
+        self.assertIn("quant 因子残差", page)
+        self.assertIn("物理投影：实线 level（持续量）/ 虚线 edge（边沿）", page)
+        self.assertIn("粗线：锁存报警", page)
         self.assertIn("id='plot'", page)
         self.assertIn("60.00–66.00s", page)
         wheel_page = self.state.render_case(
             "Acc_RRBlowOut", 60.0, 66.0, "wheel"
         )
         self.assertIn('const MODE="wheel"', wheel_page)
+        self.assertIn("对角 FL+RR", wheel_page)
+        self.assertNotIn("<b>quant 因子残差</b>", wheel_page)
         self.assertNotIn("<canvas", wheel_page)
 
     def test_candidate_scan_contains_confirmed_acc_rr(self) -> None:
