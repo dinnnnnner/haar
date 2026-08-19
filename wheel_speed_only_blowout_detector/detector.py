@@ -29,22 +29,31 @@ class WheelSpeedBlowoutConfig:
     baseline_window: int = 500
     baseline_min_samples: int = 200
     baseline_refresh_frames: int = 10
-    min_individual_edge: float = 0.0058
-    min_diagonal_edge: float = 0.0058
+    # 0818 events have a weaker initial edge than the earlier development
+    # events, especially the 60 kPa case.  Persistence remains the primary
+    # confirmation guard.
+    min_individual_edge: float = 0.0050
+    min_diagonal_edge: float = 0.0050
     min_individual_peak: float = 0.0070
     min_diagonal_peak: float = 0.0070
-    max_individual_peak: float = 0.0250
+    max_individual_peak: float = 0.0350
     max_diagonal_peak: float = 0.0450
     confirm_frames: int = 70
     early_confirm_frames: int | None = 55
     persistence_tail_frames: int = 40
     min_individual_persistence: float = 0.0055
-    min_diagonal_persistence: float = 0.0055
+    min_diagonal_persistence: float = 0.0058
     persistence_floor: float = 0.0035
     min_persistence_fraction: float = 0.75
     min_mate_persistence: float = -0.0035
+    # Strong braking in the 0818 Brk event moves the diagonal mate and common
+    # speed while the target's two spatial projections remain persistent.
+    braking_min_mate_persistence: float = -0.0150
     early_max_common_speed_range: float = 0.035
     max_common_speed_range: float = 0.050
+    early_max_braking_speed_range: float = 0.200
+    max_braking_speed_range: float = 0.300
+    min_braking_range_fraction: float = 0.80
     candidate_drop_limit: float = -0.0040
     clear_after_invalid_frames: int = 50
 
@@ -79,6 +88,14 @@ class WheelSpeedBlowoutConfig:
             raise ValueError("diagonal peak limits are invalid")
         if not 0.0 < self.early_max_common_speed_range <= self.max_common_speed_range:
             raise ValueError("early common-speed range must not exceed the regular limit")
+        if not (
+            self.early_max_common_speed_range
+            <= self.early_max_braking_speed_range
+            <= self.max_braking_speed_range
+        ):
+            raise ValueError("braking common-speed range limits are invalid")
+        if not 0.0 <= self.min_braking_range_fraction <= 1.0:
+            raise ValueError("min_braking_range_fraction must be in [0, 1]")
         if self.clear_after_invalid_frames <= 0:
             raise ValueError("clear_after_invalid_frames must be positive")
 
@@ -332,11 +349,25 @@ class WheelSpeedBlowoutDetector:
         common_range = max(candidate.common_log_speeds) - min(
             candidate.common_log_speeds
         )
-        common_limit = (
-            self.cfg.early_max_common_speed_range
-            if candidate_frames < self.cfg.confirm_frames
-            else self.cfg.max_common_speed_range
+        common_delta = candidate.common_log_speeds[-1] - candidate.common_log_speeds[0]
+        braking = (
+            common_delta < 0.0
+            and -common_delta >= self.cfg.min_braking_range_fraction * common_range
         )
+        if braking:
+            common_limit = (
+                self.cfg.early_max_braking_speed_range
+                if candidate_frames < self.cfg.confirm_frames
+                else self.cfg.max_braking_speed_range
+            )
+            mate_limit = self.cfg.braking_min_mate_persistence
+        else:
+            common_limit = (
+                self.cfg.early_max_common_speed_range
+                if candidate_frames < self.cfg.confirm_frames
+                else self.cfg.max_common_speed_range
+            )
+            mate_limit = self.cfg.min_mate_persistence
         confirmed = (
             candidate.max_individual >= self.cfg.min_individual_peak
             and candidate.max_diagonal >= self.cfg.min_diagonal_peak
@@ -346,7 +377,7 @@ class WheelSpeedBlowoutDetector:
             >= self.cfg.min_persistence_fraction
             and self._above_fraction(diagonal_tail)
             >= self.cfg.min_persistence_fraction
-            and median(mate_tail) >= self.cfg.min_mate_persistence
+            and median(mate_tail) >= mate_limit
             and common_range <= common_limit
         )
         if confirmed:

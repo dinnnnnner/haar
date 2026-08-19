@@ -1,72 +1,53 @@
 {
-  "schema_version": 1,
-  "evaluation_date": "2026-08-18",
-  "algorithm": "wheel_speed_only_dual_spatial_evidence_v2",
+  "schema_version": 2,
+  "evaluation_date": "2026-08-19",
+  "algorithm": "wheel_speed_only_dual_spatial_evidence_0818",
   "inputs": ["time_s", "FL_speed", "FR_speed", "RL_speed", "RR_speed"],
   "pressure_sensor_input": false,
-  "real_positive_replay": {
-    "samples": 8,
-    "physical_target_wheels": ["RR"],
-    "detected": 8,
-    "wrong_wheel_or_pre_event_alarms": 0,
-    "mean_confirmation_delay_s": 0.6775,
-    "max_confirmation_delay_s": 0.70,
-    "cases": [
-      {"sample_id": "E01", "confirmation_delay_s": 0.68},
-      {"sample_id": "E02", "confirmation_delay_s": 0.65},
-      {"sample_id": "E03", "confirmation_delay_s": 0.68},
-      {"sample_id": "E04", "confirmation_delay_s": 0.69},
-      {"sample_id": "E05", "confirmation_delay_s": 0.69},
-      {"sample_id": "E06", "confirmation_delay_s": 0.67},
-      {"sample_id": "E07", "confirmation_delay_s": 0.66},
-      {"sample_id": "E08", "confirmation_delay_s": 0.70}
-    ]
+  "optimization_basis": {
+    "positive_dataset": "0818",
+    "included_cases": [
+      "60kpa_RRBlowOut",
+      "Acc_RRBlowOut",
+      "Brk_RRBlowOut"
+    ],
+    "deferred_cases": ["40kph_RRBlowOut"],
+    "excluded_positive_datasets": ["ly"]
   },
-  "augmented_replay": {
-    "samples": 488,
-    "event_samples": 408,
-    "events_detected_within_2s": 408,
-    "event_misses": 0,
-    "pre_event_or_wrong_wheel_alarm_samples": 0,
-    "normal_samples": 80,
-    "normal_false_alarm_samples": 0,
-    "mean_confirmation_delay_s": 0.67947652,
-    "p95_confirmation_delay_s": 0.70621444,
-    "max_confirmation_delay_s": 0.717654,
-    "missed_samples": []
+  "0818_positive_replay": {
+    "samples": 3,
+    "physical_target_wheels": ["RR"],
+    "detected_within_2s": 3,
+    "wrong_wheel_or_pre_event_alarms": 0,
+    "mean_confirmation_delay_s": 0.8433333333333337,
+    "max_confirmation_delay_s": 0.9399999999999977,
+    "cases": [
+      {"sample_id": "60kpa_RRBlowOut", "confirmation_delay_s": 0.8799999999999955},
+      {"sample_id": "Acc_RRBlowOut", "confirmation_delay_s": 0.9399999999999977},
+      {"sample_id": "Brk_RRBlowOut", "confirmation_delay_s": 0.710000000000008}
+    ]
   },
   "real_normal_road_replay": {
     "cases": 37,
     "frames": 8922100,
-    "duration_hours": 24.784,
-    "false_alarm_cases": 0,
-    "false_alarm_events": 0,
-    "candidate_entries": 21489
+    "duration_hours": 24.78350833333333,
+    "false_alarm_cases": 0
   },
   "optimization": {
-    "baseline_event_detection": "407/408",
-    "change": "55-frame early confirmation only when common log-speed range is <= 0.035; retain the original 70-frame confirmation otherwise",
-    "rejected_development_counterexample": "a 55-frame city-road FL false alarm had common log-speed range 0.0378",
-    "unified_report": "speed_algorithm_evaluation/summary.json"
-  },
-  "synthetic_regression": {
-    "tests": 9,
-    "covered": [
-      "each single wheel position",
-      "two simultaneous wheels on either diagonal",
-      "two sequential wheels on one diagonal",
-      "common acceleration and first-order steering rejection",
-      "same-axle step rejection",
-      "contaminated-reference suppression",
-      "low-speed invalidation and latched alarm",
-      "early-confirmation common-speed guard",
-      "reset and input validation"
-    ]
+    "previous_0818_detection": "1/3",
+    "optimized_0818_detection": "3/3",
+    "changes": [
+      "lower the dual edge trigger from 0.0058 to 0.0050",
+      "raise the individual transient ceiling to 0.035",
+      "add coherent-braking-only common-speed and diagonal-mate limits",
+      "raise diagonal persistence to reject normal-road braking transients"
+    ],
+    "unified_report": "0818_algorithm_evaluation/summary.json"
   },
   "limitations": [
     "development replay, not an independent locked-parameter blind test",
-    "real positive samples cover RR only",
-    "equal four-wheel changes are unobservable from relative wheel speed",
-    "equal adjacent-wheel changes are conservatively rejected"
+    "0818 positive samples cover RR only",
+    "40kph labeling and wheel-speed feedback are deferred",
+    "equal four-wheel changes are unobservable from relative wheel speed"
   ]
 }

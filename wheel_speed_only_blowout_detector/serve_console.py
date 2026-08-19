@@ -148,8 +148,27 @@ class ConsoleState:
                 f"{'正确检出' if is_event else '全量无误报'}</span></td>"
                 f"<td><a class='mini-button' href='/case/{quote(case_id)}'>运行并查看</a></td></tr>"
             )
-        positive = self.validation["real_positive_replay"]
-        augmented = self.validation["augmented_replay"]
+        positive = self.validation.get(
+            "0818_positive_replay", self.validation.get("real_positive_replay", {})
+        )
+        positive_detected = positive.get(
+            "detected_within_2s", positive.get("detected", 0)
+        )
+        augmented = self.validation.get("augmented_replay")
+        if augmented is None:
+            basis = self.validation.get("optimization_basis", {})
+            secondary_card = (
+                "<div class='card'><span>参数基准</span>"
+                f"<strong>{html.escape(str(basis.get('positive_dataset', '—')))}</strong>"
+                "<small>ly 已排除 · 40kph 暂缓</small></div>"
+            )
+        else:
+            secondary_card = (
+                "<div class='card'><span>增强事件</span>"
+                f"<strong>{augmented['events_detected_within_2s']}/"
+                f"{augmented['event_samples']}</strong>"
+                "<small>2 秒内正确轮位</small></div>"
+            )
         normal = self.validation["real_normal_road_replay"]
         return _page(
             "纯四轮轮速爆胎算法控制台",
@@ -159,8 +178,8 @@ class ConsoleState:
 <p class='muted'>完整因果回放 · 双空间证据 · 候选区间 · 四轮独立锁存</p></div>
 <nav><a class='button secondary' href='/cancellations'>取消耗时统计</a><a class='button secondary' href='/report'>算法与验证</a><a class='button' href='/validation.json'>下载验证 JSON</a></nav></header>
 <section class='cards'>
-  <div class='card accent'><span>真实爆胎检出</span><strong>{positive['detected']}/{positive['samples']}</strong><small>平均延迟 {positive['mean_confirmation_delay_s']:.3f}s</small></div>
-  <div class='card'><span>增强事件</span><strong>{augmented['events_detected_within_2s']}/{augmented['event_samples']}</strong><small>2 秒内正确轮位</small></div>
+  <div class='card accent'><span>真实爆胎检出</span><strong>{positive_detected}/{positive['samples']}</strong><small>平均延迟 {positive['mean_confirmation_delay_s']:.3f}s</small></div>
+  {secondary_card}
   <div class='card'><span>正常道路误报</span><strong>{normal['false_alarm_cases']}/{normal['cases']}</strong><small>{normal['duration_hours']:.3f} 小时</small></div>
   <div class='card'><span>正常道路帧数</span><strong>{normal['frames']:,}</strong><small>四轮 100 Hz 回放</small></div>
 </section>
@@ -351,8 +370,27 @@ class ConsoleState:
         )
 
     def render_report(self) -> str:
-        positive = self.validation["real_positive_replay"]
-        augmented = self.validation["augmented_replay"]
+        positive = self.validation.get(
+            "0818_positive_replay", self.validation.get("real_positive_replay", {})
+        )
+        positive_detected = positive.get(
+            "detected_within_2s", positive.get("detected", 0)
+        )
+        augmented = self.validation.get("augmented_replay")
+        if augmented is None:
+            basis = self.validation.get("optimization_basis", {})
+            development_card = (
+                "<div class='card'><span>参数基准</span>"
+                f"<strong>{html.escape(str(basis.get('positive_dataset', '—')))}</strong>"
+                "<small>ly 正样本不参与</small></div>"
+            )
+        else:
+            development_card = (
+                "<div class='card'><span>增强事件</span>"
+                f"<strong>{augmented['events_detected_within_2s']}/"
+                f"{augmented['event_samples']}</strong>"
+                f"<small>漏检 {augmented['event_misses']}</small></div>"
+            )
         normal = self.validation["real_normal_road_replay"]
         config_rows = "".join(
             f"<tr><td>{html.escape(name)}</td><td>{html.escape(str(value))}</td></tr>"
@@ -370,9 +408,9 @@ individualᵢ = log(wᵢ) − mean(log(w<sub>另一对角</sub>))<br>
 diagonal = log(w<sub>FL</sub>) − log(w<sub>FR</sub>) − log(w<sub>RL</sub>) + log(w<sub>RR</sub>)
 </div><ol><li>两项证据分别减去滚动正常基线。</li><li>逐轮边沿和按轮位取符号的对角边沿必须同时为正。</li><li>候选持续约 0.7 秒后检查高位占比、同对角伙伴和共同车速瞬变。</li><li>确认后锁存；参考已报警轮的另一对角暂停强判，防止连锁误报。</li></ol></section>
 <section class='panel report'><h2>开发回放</h2><div class='cards compact'>
-<div class='card'><span>真实 RR 爆胎</span><strong>{positive['detected']}/{positive['samples']}</strong><small>错误轮位/提前报警 {positive['wrong_wheel_or_pre_event_alarms']}</small></div>
+<div class='card'><span>真实 RR 爆胎</span><strong>{positive_detected}/{positive['samples']}</strong><small>错误轮位/提前报警 {positive['wrong_wheel_or_pre_event_alarms']}</small></div>
 <div class='card'><span>平均/最大延迟</span><strong>{positive['mean_confirmation_delay_s']:.3f}/{positive['max_confirmation_delay_s']:.2f}s</strong></div>
-<div class='card'><span>增强事件</span><strong>{augmented['events_detected_within_2s']}/{augmented['event_samples']}</strong><small>漏检 {augmented['event_misses']}</small></div>
+{development_card}
 <div class='card'><span>正常道路</span><strong>0/{normal['cases']}</strong><small>{normal['frames']:,} 帧</small></div></div>
 <div class='notice danger'><b>不是独立盲测：</b>参数使用过同源数据开发；FL、FR、RL 真实爆胎和多轮实车场景仍需补齐。</div></section>
 <details class='panel report'><summary>当前参数</summary><div class='table-wrap'><table><thead><tr><th>参数</th><th>值</th></tr></thead><tbody>{config_rows}</tbody></table></div></details>

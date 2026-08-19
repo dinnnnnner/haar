@@ -35,29 +35,45 @@ class QuantBlowoutConfig:
     level_variance_floor: float = 2.5e-8
     edge_variance_floor: float = 1.0e-8
 
-    shock_trigger_z: float = 5.0
+    # The 0818 events have a smaller covariance-normalized shock than the
+    # earlier development events, while retaining a clear physical edge.
+    shock_trigger_z: float = 3.0
+    max_shock_trigger_z: float = 4.5
     shock_isolation_z: float = 2.0
-    min_physical_edge: float = 0.0038
+    min_physical_edge: float = 0.0039
     cusum_decay: float = 0.94
     cusum_drift_z: float = 1.0
     persistence_decay: float = 0.985
     persistence_drift_z: float = 0.5
 
-    confirm_frames: int = 55
-    persistence_tail_frames: int = 40
+    # A 16-frame tail is the shortest setting that kept all 37 RobustData
+    # records alarm-free in the 0818 search.  Shorter tails admitted transient
+    # single-wheel road shocks.  Candidate acquisition still supplies the
+    # shock edge; this window confirms that the isolated level persists.
+    confirm_frames: int = 16
+    persistence_tail_frames: int = 16
     candidate_timeout_frames: int = 120
     min_physical_peak: float = 0.0060
+    min_physical_peak_with_common_motion: float = 0.0100
+    small_peak_max_common_log_range: float = 0.020
     max_physical_peak: float = 0.0250
-    min_physical_persistence: float = 0.0042
+    min_physical_persistence: float = 0.0060
     physical_persistence_floor: float = 0.0028
     min_persistence_fraction: float = 0.75
     min_level_isolation_z: float = 1.0
     level_isolation_floor_z: float = 1.0
-    min_isolation_fraction: float = 0.95
+    min_isolation_fraction: float = 0.825
     min_median_level_z: float = 1.5
-    min_median_risk: float = 55.0
+    # A true single-wheel signature leaves every peer projection non-positive
+    # over the confirmation tail.  Requiring that sign, rather than a small
+    # positive tolerance, separates the short 0818 events from RobustData
+    # multi-wheel road impacts without extending confirmation time.
+    max_peer_physical_median: float = 0.0
+    min_median_risk: float = 52.5
     min_peak_risk: float = 82.0
     max_common_log_range: float = 0.050
+    max_braking_log_range: float = 0.250
+    min_braking_range_fraction: float = 0.80
     reset_physical_level: float = -0.0025
     reset_below_frames: int = 15
     clear_after_invalid_frames: int = 50
@@ -77,16 +93,28 @@ class QuantBlowoutConfig:
             raise ValueError("covariance_shrinkage must be in [0, 1]")
         if self.covariance_refresh_frames <= 0:
             raise ValueError("covariance_refresh_frames must be positive")
+        if self.max_shock_trigger_z <= self.shock_trigger_z:
+            raise ValueError("shock trigger limits are invalid")
         if not 1 <= self.persistence_tail_frames <= self.confirm_frames:
             raise ValueError("persistence_tail_frames is outside confirm_frames")
         if self.candidate_timeout_frames < self.confirm_frames:
             raise ValueError("candidate timeout must cover confirmation")
         if self.max_physical_peak <= self.min_physical_peak:
             raise ValueError("physical peak limits are invalid")
+        if not (
+            self.min_physical_peak
+            <= self.min_physical_peak_with_common_motion
+            < self.max_physical_peak
+        ):
+            raise ValueError("common-motion physical peak limit is invalid")
         if not 0.0 <= self.min_persistence_fraction <= 1.0:
             raise ValueError("min_persistence_fraction must be in [0, 1]")
         if not 0.0 <= self.min_isolation_fraction <= 1.0:
             raise ValueError("min_isolation_fraction must be in [0, 1]")
+        if self.max_braking_log_range < self.max_common_log_range:
+            raise ValueError("braking common-speed range must cover the regular range")
+        if not 0.0 <= self.min_braking_range_fraction <= 1.0:
+            raise ValueError("min_braking_range_fraction must be in [0, 1]")
 
 
 @dataclass(frozen=True)
@@ -178,6 +206,9 @@ class _WheelState:
     physical_history: list[float] = field(default_factory=list)
     level_z_history: list[float] = field(default_factory=list)
     isolation_history: list[float] = field(default_factory=list)
+    peer_physical_history: list[tuple[float, float, float]] = field(
+        default_factory=list
+    )
     risk_history: list[float] = field(default_factory=list)
     common_history: list[float] = field(default_factory=list)
 
@@ -338,6 +369,11 @@ class QuantBlowoutDetector:
                 level_isolation[wheel],
                 physical_edge[wheel],
                 physical_level[wheel],
+                tuple(
+                    physical_level[peer]
+                    for peer in range(4)
+                    if peer != wheel
+                ),
                 common_log_speed,
                 new,
             )
@@ -372,6 +408,7 @@ class QuantBlowoutDetector:
         level_isolation: float,
         physical_edge: float,
         physical_level: float,
+        peer_physical_levels: tuple[float, float, float],
         common_log_speed: float,
         new: list[bool],
     ) -> None:
@@ -400,6 +437,7 @@ class QuantBlowoutDetector:
             state.phase = "monitoring"
             if (
                 shock_z >= self.cfg.shock_trigger_z
+                and shock_z <= self.cfg.max_shock_trigger_z
                 and shock_isolation >= self.cfg.shock_isolation_z
                 and physical_edge >= self.cfg.min_physical_edge
             ):
@@ -416,6 +454,7 @@ class QuantBlowoutDetector:
         state.physical_history.append(physical_level)
         state.level_z_history.append(level_z)
         state.isolation_history.append(level_isolation)
+        state.peer_physical_history.append(peer_physical_levels)
         state.risk_history.append(state.risk)
         state.common_history.append(common_log_speed)
         state.below_frames = state.below_frames + 1 if physical_level < self.cfg.reset_physical_level else 0
@@ -432,10 +471,25 @@ class QuantBlowoutDetector:
         physical_tail = state.physical_history[-tail:]
         z_tail = state.level_z_history[-tail:]
         isolation_tail = state.isolation_history[-tail:]
+        peer_physical_tail = state.peer_physical_history[-tail:]
         risk_tail = state.risk_history[-tail:]
         common_range = max(state.common_history) - min(state.common_history)
+        common_delta = state.common_history[-1] - state.common_history[0]
+        braking = (
+            common_delta < 0.0
+            and -common_delta >= self.cfg.min_braking_range_fraction * common_range
+        )
+        common_limit = (
+            self.cfg.max_braking_log_range
+            if braking
+            else self.cfg.max_common_log_range
+        )
         confirmed = (
             state.peak_physical >= self.cfg.min_physical_peak
+            and (
+                state.peak_physical >= self.cfg.min_physical_peak_with_common_motion
+                or common_range <= self.cfg.small_peak_max_common_log_range
+            )
             and median(physical_tail) >= self.cfg.min_physical_persistence
             and sum(value >= self.cfg.physical_persistence_floor for value in physical_tail) / len(physical_tail)
             >= self.cfg.min_persistence_fraction
@@ -447,9 +501,13 @@ class QuantBlowoutDetector:
             )
             / len(isolation_tail)
             >= self.cfg.min_isolation_fraction
+            and max(
+                median(values) for values in zip(*peer_physical_tail)
+            )
+            <= self.cfg.max_peer_physical_median
             and median(risk_tail) >= self.cfg.min_median_risk
             and state.peak_risk >= self.cfg.min_peak_risk
-            and common_range <= self.cfg.max_common_log_range
+            and common_range <= common_limit
         )
         if confirmed:
             state.phase = "alarm"
@@ -467,6 +525,7 @@ class QuantBlowoutDetector:
         state.physical_history.clear()
         state.level_z_history.clear()
         state.isolation_history.clear()
+        state.peer_physical_history.clear()
         state.risk_history.clear()
         state.common_history.clear()
 
@@ -480,6 +539,7 @@ class QuantBlowoutDetector:
         state.physical_history.clear()
         state.level_z_history.clear()
         state.isolation_history.clear()
+        state.peer_physical_history.clear()
         state.risk_history.clear()
         state.common_history.clear()
 

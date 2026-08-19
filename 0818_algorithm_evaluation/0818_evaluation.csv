@@ -1,0 +1,13 @@
+algorithm,case,event_time_s,target_wheel,detected_within_2s,delay_s,delay_frames,detected_within_20_frames,pre_event_false_alarm,wrong_wheel_false_alarm,alarm_wheels,first_alarm_times_s
+quant_0818,60kpa_RRBlowOut,48.2,RR,True,0.45999999999999375,46,False,False,False,RR,RR:48.66
+quant_0818,Acc_RRBlowOut,62.660000000000004,RR,True,0.4099999999999966,41,False,False,False,RR,RR:63.07
+quant_0818,Brk_RRBlowOut,86.77,RR,True,0.3200000000000074,32,False,False,False,RR,RR:87.09
+quant_previous,60kpa_RRBlowOut,48.2,RR,False,,,False,False,False,,
+quant_previous,Acc_RRBlowOut,62.660000000000004,RR,False,,,False,False,False,,
+quant_previous,Brk_RRBlowOut,86.77,RR,False,,,False,False,False,,
+wheelonly_0818,60kpa_RRBlowOut,48.2,RR,True,0.8799999999999955,88,False,False,False,RR,RR:49.08
+wheelonly_0818,Acc_RRBlowOut,62.660000000000004,RR,True,0.9399999999999977,94,False,False,False,RR,RR:63.60
+wheelonly_0818,Brk_RRBlowOut,86.77,RR,True,0.710000000000008,71,False,False,False,RR,RR:87.48
+wheelonly_previous,60kpa_RRBlowOut,48.2,RR,False,,,False,False,False,,
+wheelonly_previous,Acc_RRBlowOut,62.660000000000004,RR,True,0.9499999999999957,95,False,False,False,RR,RR:63.61
+wheelonly_previous,Brk_RRBlowOut,86.77,RR,False,,,False,False,False,,
