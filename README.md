@@ -4,16 +4,33 @@
 
 `0818/` 原始文件每帧由四行 FL/FR/RL/RR 齿时间戳和一行车辆信号组成，
 车辆信号行的最后一个值作为爆胎信号位。以下命令会做 48 齿相位校正，并只
-回放 `wheel_speed_only` 与 `quant` 两套纯轮速算法，启动浏览器控制台：
+回放当前 `quant` 纯轮速算法，启动浏览器控制台：
 
 ```bash
 python3 serve_0818_console.py
 ```
 
 浏览器访问 `http://127.0.0.1:8773`。控制台支持记录列表、上一条/下一条、
-时间窗口、候选区间跳转，以及 `wheel_only`、`quant` 和双算法对比切换。
+时间窗口和候选区间跳转；展示固定使用当前 `quant` 算法。
 原始爆胎信号逐帧显示；事件时刻取首段持续至少 20 帧的高电平，以忽略文件
-开头的短暂残留信号。若仍需生成静态 HTML，可运行
+开头的短暂残留信号。首页可切换到 `RobustData 正常道路`，直接读取
+`speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
+轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
+所选窗口。还可切换到 `LY 实车爆胎`，展示
+`augmented_event_dataset_v2/manifest.csv` 中 8 条未增强的原始事件裁剪；红线为 RR
+爆胎真值，黑线为原始传感器信号，列表同时显示当前 quant 实际回放结果。
+当前 0818 参数在 LY 上检出 2/8（E01、E08）；页面不沿用旧评价表中的历史结果，
+避免列表与详情曲线不一致。每个子图左上角均显示指标标题，纵轴保留单位。
+
+如评价文件位于其他位置，可显式指定：
+
+```bash
+python3 serve_0818_console.py \
+  --robust-evaluation /path/to/robust_evaluation.csv \
+  --ly-manifest /path/to/ly/manifest.csv
+```
+
+若仍需生成静态 HTML，可运行
 `python3 build_0818_display.py`。
 
 当前算法优化只采用 `60kpa_RRBlowOut`、`Acc_RRBlowOut` 和

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import html
 import json
 import math
@@ -220,6 +221,77 @@ def analyze_file(
     times = [index * sample_time_s for index in range(len(frames))]
     signals = [frame.blowout_signal for frame in frames]
 
+    return analyze_speed_rows(
+        input_path,
+        zip(times, frame_speeds, signals),
+        phase_factors=factors,
+        signal_event_time_s=sustained_signal_onset(
+            signals, minimum_signal_frames, sample_time_s
+        ),
+    )
+
+
+def analyze_wheel_speed_csv(
+    input_path: Path,
+    start_time_s: float,
+    end_time_s: float,
+    *,
+    signal_columns: Sequence[str] = (),
+    signal_event_time_s: float | None = None,
+) -> CaseAnalysis:
+    """Run both current detectors causally and retain only the requested window."""
+
+    if start_time_s < 0.0 or end_time_s <= start_time_s:
+        raise ValueError("CSV 回放时间窗口无效")
+
+    def rows() -> Iterable[tuple[float, list[float], bool]]:
+        required = (
+            "time_s",
+            "wheel0_corrected_rad_s",
+            "wheel1_corrected_rad_s",
+            "wheel2_corrected_rad_s",
+            "wheel3_corrected_rad_s",
+        )
+        with input_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            missing = [name for name in required if name not in (reader.fieldnames or ())]
+            if missing:
+                raise ValueError(f"CSV 缺少列 {missing}：{input_path}")
+            missing_signals = [
+                name
+                for name in signal_columns
+                if name not in (reader.fieldnames or ())
+            ]
+            if missing_signals:
+                raise ValueError(f"CSV 缺少信号列 {missing_signals}：{input_path}")
+            for row in reader:
+                t_sec = float(row["time_s"])
+                if t_sec > end_time_s:
+                    break
+                yield (
+                    t_sec,
+                    [float(row[name]) for name in required[1:]],
+                    any(float(row[name]) != 0.0 for name in signal_columns),
+                )
+
+    return analyze_speed_rows(
+        input_path,
+        rows(),
+        collect_start_time_s=start_time_s,
+        signal_event_time_s=signal_event_time_s,
+    )
+
+
+def analyze_speed_rows(
+    input_path: Path,
+    rows: Iterable[tuple[float, Sequence[float], bool]],
+    *,
+    collect_start_time_s: float | None = None,
+    phase_factors: tuple[tuple[float, ...], ...] = ((), (), (), ()),
+    signal_event_time_s: float | None = None,
+) -> CaseAnalysis:
+    """Analyze wheel-speed rows while preserving causal warm-up before collection."""
+
     wheel_detector = WheelSpeedBlowoutDetector()
     quant_detector = QuantBlowoutDetector()
     wheel_speeds = [[] for _ in range(4)]
@@ -248,11 +320,22 @@ def analyze_file(
     wheel_first: list[float | None] = [None] * 4
     quant_first: list[float | None] = [None] * 4
 
-    for t_sec, speeds in zip(times, frame_speeds):
+    times: list[float] = []
+    signals: list[bool] = []
+    for t_sec, speeds, signal in rows:
         wheel_result = wheel_detector.push(
             WheelSpeedFrame.from_sequences(t_sec, speeds)
         )
         quant_result = quant_detector.push(QuantFrame.from_sequences(t_sec, speeds))
+        for wheel in range(4):
+            if wheel_result.new_blowouts[wheel] and wheel_first[wheel] is None:
+                wheel_first[wheel] = t_sec
+            if quant_result.new_blowouts[wheel] and quant_first[wheel] is None:
+                quant_first[wheel] = t_sec
+        if collect_start_time_s is not None and t_sec < collect_start_time_s:
+            continue
+        times.append(t_sec)
+        signals.append(signal)
         for factor in range(3):
             quant_factor_residuals[factor].append(
                 _percent(quant_result.factor_residuals[factor])
@@ -300,20 +383,16 @@ def analyze_file(
             quant_states[wheel].append(quant_result.states[wheel])
             quant_candidates[wheel].append(quant_result.states[wheel] == "candidate")
             quant_alarms[wheel].append(quant_result.blowout_alarms[wheel])
-            if wheel_result.new_blowouts[wheel] and wheel_first[wheel] is None:
-                wheel_first[wheel] = t_sec
-            if quant_result.new_blowouts[wheel] and quant_first[wheel] is None:
-                quant_first[wheel] = t_sec
+    if not times:
+        raise ValueError(f"所选窗口没有数据：{input_path}")
 
     return CaseAnalysis(
         input_path=input_path,
         times=times,
         wheel_speeds=wheel_speeds,
         blowout_signal=signals,
-        signal_event_time_s=sustained_signal_onset(
-            signals, minimum_signal_frames, sample_time_s
-        ),
-        phase_factors=factors,
+        signal_event_time_s=signal_event_time_s,
+        phase_factors=phase_factors,
         wheel_individual_gains_pct=wheel_individual_gains,
         wheel_individual_edges_pct=wheel_individual_edges,
         wheel_diagonal_gains_pct=wheel_diagonal_gains,
