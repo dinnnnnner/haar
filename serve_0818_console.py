@@ -17,7 +17,9 @@ from build_0818_display import (
     WHEEL_NAMES,
     analyze_file,
     analyze_wheel_speed_csv,
+    iter_wheel_speed_csv,
 )
+from quant_wheel_blowout_detector import QuantBlowoutDetector, QuantFrame
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent
@@ -69,6 +71,12 @@ class LyCase:
     signal_columns: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class QuantReplaySummary:
+    intervals: tuple[CandidateInterval, ...]
+    first_alarms: tuple[float | None, ...]
+
+
 def candidate_intervals(data: CaseAnalysis) -> tuple[CandidateInterval, ...]:
     intervals: list[CandidateInterval] = []
     for algorithm, candidates, alarms in (
@@ -103,6 +111,52 @@ def candidate_intervals(data: CaseAnalysis) -> tuple[CandidateInterval, ...]:
                 )
     return tuple(
         sorted(intervals, key=lambda item: (item.start_s, item.algorithm, item.wheel))
+    )
+
+
+def scan_quant_replay(input_path: Path) -> QuantReplaySummary:
+    """Scan a complete wheel-speed CSV while retaining only sidebar summaries."""
+
+    detector = QuantBlowoutDetector()
+    starts: list[float | None] = [None] * 4
+    first_alarms: list[float | None] = [None] * 4
+    intervals: list[CandidateInterval] = []
+    last_time_s: float | None = None
+    last_alarms = (False, False, False, False)
+    for time_s, speeds, _signal in iter_wheel_speed_csv(input_path):
+        result = detector.push(QuantFrame.from_sequences(time_s, speeds))
+        last_time_s = time_s
+        last_alarms = result.blowout_alarms
+        for wheel in range(4):
+            if result.new_blowouts[wheel] and first_alarms[wheel] is None:
+                first_alarms[wheel] = time_s
+            active = result.states[wheel] == "candidate"
+            if active and starts[wheel] is None:
+                starts[wheel] = time_s
+            elif not active and starts[wheel] is not None:
+                intervals.append(
+                    CandidateInterval(
+                        "quant",
+                        wheel,
+                        starts[wheel],
+                        time_s,
+                        result.blowout_alarms[wheel],
+                    )
+                )
+                starts[wheel] = None
+    if last_time_s is not None:
+        for wheel, start_s in enumerate(starts):
+            if start_s is not None:
+                intervals.append(
+                    CandidateInterval(
+                        "quant", wheel, start_s, last_time_s, last_alarms[wheel]
+                    )
+                )
+    return QuantReplaySummary(
+        intervals=tuple(
+            sorted(intervals, key=lambda item: (item.start_s, item.wheel))
+        ),
+        first_alarms=tuple(first_alarms),
     )
 
 
@@ -193,6 +247,9 @@ class ConsoleState:
         self._analysis = lru_cache(maxsize=len(paths))(self._analyze)
         self.robust_cases = self._load_robust_cases()
         self.robust_case_ids = list(self.robust_cases)
+        self._robust_replay = lru_cache(maxsize=len(self.robust_cases) or 1)(
+            self._scan_robust_replay
+        )
         self.ly_cases = self._load_ly_cases()
         self.ly_case_ids = list(self.ly_cases)
         self._ly_analysis = lru_cache(maxsize=len(self.ly_cases) or 1)(
@@ -253,6 +310,15 @@ class ConsoleState:
 
     def analyze(self, case_id: str) -> CaseAnalysis:
         return self._analysis(case_id)
+
+    def _scan_robust_replay(self, case_id: str) -> QuantReplaySummary:
+        case = self.robust_cases.get(case_id)
+        if case is None:
+            raise KeyError(case_id)
+        return scan_quant_replay(case.csv_path)
+
+    def robust_replay(self, case_id: str) -> QuantReplaySummary:
+        return self._robust_replay(case_id)
 
     def _load_ly_cases(self) -> dict[str, LyCase]:
         if self.ly_manifest is None:
@@ -574,13 +640,18 @@ class ConsoleState:
         if dataset == "robust":
             data = analyze_wheel_speed_csv(case.csv_path, start_s, end_s)
             left, right = 0, len(data.times)
+            replay_summary = self.robust_replay(case_id)
+            intervals = replay_summary.intervals
+            quant_first_alarms = replay_summary.first_alarms
         else:
             left = bisect.bisect_left(data.times, start_s)
             right = bisect.bisect_right(data.times, end_s)
+            intervals = candidate_intervals(data)
+            quant_first_alarms = data.quant_first_alarms
         if left >= right:
             raise ValueError("所选窗口没有数据")
         payload = self._window_payload(data, left, right)
-        intervals = candidate_intervals(data)
+        payload["quant_first_alarms"] = list(quant_first_alarms)
         sidebar = self._candidate_sidebar(
             case_id,
             intervals,
@@ -603,16 +674,16 @@ class ConsoleState:
 <p class='path'>{html.escape(str(data.input_path))}</p></div></header>
 <section class='cards compact'>
  <div class='card accent'><span>{truth_title}</span><strong>{truth_value}</strong><small>{truth_note}</small></div>
- <div class='card'><span>quant</span><strong>{html.escape(_alarm_text(data.quant_first_alarms, event))}</strong></div>
+ <div class='card'><span>quant</span><strong>{html.escape(_alarm_text(quant_first_alarms, event))}</strong><small>整条记录</small></div>
  <div class='card'><span>当前窗口</span><strong>{start_s:.2f}–{end_s:.2f}s</strong><small>{right-left:,} 帧</small></div>
 </section>
 <form class='range panel' method='get' action='/case/{quote(case_id)}'>
  {hidden_dataset}
  <input type='hidden' name='algorithm' value='quant'>
  <span class='algorithm-fixed'>算法：<b>quant</b></span>
- <label>开始 <input name='start' type='number' step='0.01' value='{start_s:.2f}'></label>
- <label>结束 <input name='end' type='number' step='0.01' value='{end_s:.2f}'></label>
- <button>查看窗口</button><span class='muted'>单次最多 {self.max_window_s:g} 秒</span>
+ <label>Plotly 开始 <input name='start' type='number' step='0.01' value='{start_s:.2f}'></label>
+ <label>Plotly 结束 <input name='end' type='number' step='0.01' value='{end_s:.2f}'></label>
+ <button>查看图窗</button><span class='muted'>仅裁剪右侧曲线，左侧保留全记录信号与候选 · 单次最多 {self.max_window_s:g} 秒</span>
 </form>
 <div class='workbench'><aside>{sidebar}</aside><div class='charts'>
 <div class='readout' id='readout'>在 Plotly 图上悬停，查看同一时刻的四轮证据</div>
@@ -709,7 +780,7 @@ class ConsoleState:
                 "<div class='empty'><b>没有候选</b><span>所选算法未进入 candidate。</span></div>"
             )
         return (
-            f"<div class='aside-title'><b>信号与候选</b><span>{len(visible)} 个候选</span></div>"
+            f"<div class='aside-title'><b>全记录信号与候选</b><span>{len(visible)} 个候选 · 不受图窗影响</span></div>"
             + "".join(rows)
         )
 

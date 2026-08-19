@@ -112,6 +112,9 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("layout.annotations.push", page)
         self.assertIn("<b>${titles[r-1]}</b>", page)
         self.assertIn("60.00–66.00s", page)
+        self.assertIn("Plotly 开始", page)
+        self.assertIn("全记录信号与候选", page)
+        self.assertIn("不受图窗影响", page)
         self.assertIn('const MODE="quant"', page)
         self.assertNotIn("<span>wheel_only</span>", page)
         self.assertNotIn("<canvas", page)
@@ -131,6 +134,30 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("dataset=robust", detail)
         self.assertIn("四轮相位校正轮速", detail)
         self.assertIn("quant：风险分", detail)
+
+    def test_robust_sidebar_keeps_candidates_outside_plot_window(self) -> None:
+        root = Path(__file__).resolve().parent
+        source = (
+            root
+            / "augmented_event_dataset_v2"
+            / "samples"
+            / "E01_event_000.csv"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            evaluation = Path(directory) / "robust_evaluation.csv"
+            evaluation.write_text(
+                "algorithm,case,csv_path,frames,valid_frames,duration_s,"
+                "false_alarm,alarm_wheels,candidate_entries\n"
+                f"quant_optimized,Synthetic/E01,{source},5000,5000,49.99,"
+                "False,RR,1\n",
+                encoding="utf-8",
+            )
+            state = ConsoleState(root / "0818", robust_evaluation=evaluation)
+            page = state.render_case("R001", 0.0, 5.0, "quant", "robust")
+        self.assertIn("0.00–5.00s", page)
+        self.assertIn("40.20–40.44s", page)
+        self.assertIn("RR 40.44s", page)
+        self.assertIn("全记录信号与候选", page)
 
     def test_ly_index_and_detail_show_original_events_with_quant(self) -> None:
         summary = self.ly_state.summary("ly")

@@ -22,6 +22,12 @@ WHEEL_COLORS = ("#2563eb", "#f59e0b", "#16a34a", "#dc2626")
 TIMER_WRAP_US = 65_536
 DEFAULT_SAMPLE_TIME_S = 0.01
 DEFAULT_COG_COUNT = 48
+WHEEL_SPEED_CSV_COLUMNS = (
+    "wheel0_corrected_rad_s",
+    "wheel1_corrected_rad_s",
+    "wheel2_corrected_rad_s",
+    "wheel3_corrected_rad_s",
+)
 
 
 @dataclass(frozen=True)
@@ -244,42 +250,45 @@ def analyze_wheel_speed_csv(
     if start_time_s < 0.0 or end_time_s <= start_time_s:
         raise ValueError("CSV 回放时间窗口无效")
 
-    def rows() -> Iterable[tuple[float, list[float], bool]]:
-        required = (
-            "time_s",
-            "wheel0_corrected_rad_s",
-            "wheel1_corrected_rad_s",
-            "wheel2_corrected_rad_s",
-            "wheel3_corrected_rad_s",
-        )
-        with input_path.open("r", encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            missing = [name for name in required if name not in (reader.fieldnames or ())]
-            if missing:
-                raise ValueError(f"CSV 缺少列 {missing}：{input_path}")
-            missing_signals = [
-                name
-                for name in signal_columns
-                if name not in (reader.fieldnames or ())
-            ]
-            if missing_signals:
-                raise ValueError(f"CSV 缺少信号列 {missing_signals}：{input_path}")
-            for row in reader:
-                t_sec = float(row["time_s"])
-                if t_sec > end_time_s:
-                    break
-                yield (
-                    t_sec,
-                    [float(row[name]) for name in required[1:]],
-                    any(float(row[name]) != 0.0 for name in signal_columns),
-                )
-
     return analyze_speed_rows(
         input_path,
-        rows(),
+        iter_wheel_speed_csv(
+            input_path,
+            signal_columns=signal_columns,
+            end_time_s=end_time_s,
+        ),
         collect_start_time_s=start_time_s,
         signal_event_time_s=signal_event_time_s,
     )
+
+
+def iter_wheel_speed_csv(
+    input_path: Path,
+    *,
+    signal_columns: Sequence[str] = (),
+    end_time_s: float | None = None,
+) -> Iterable[tuple[float, list[float], bool]]:
+    """Stream corrected wheel-speed rows, optionally through a time limit."""
+
+    required = ("time_s", *WHEEL_SPEED_CSV_COLUMNS)
+    with input_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = reader.fieldnames or ()
+        missing = [name for name in required if name not in fields]
+        if missing:
+            raise ValueError(f"CSV 缺少列 {missing}：{input_path}")
+        missing_signals = [name for name in signal_columns if name not in fields]
+        if missing_signals:
+            raise ValueError(f"CSV 缺少信号列 {missing_signals}：{input_path}")
+        for row in reader:
+            t_sec = float(row["time_s"])
+            if end_time_s is not None and t_sec > end_time_s:
+                break
+            yield (
+                t_sec,
+                [float(row[name]) for name in WHEEL_SPEED_CSV_COLUMNS],
+                any(float(row[name]) != 0.0 for name in signal_columns),
+            )
 
 
 def analyze_speed_rows(
