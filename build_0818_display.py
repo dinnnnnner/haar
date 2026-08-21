@@ -155,6 +155,45 @@ def learn_phase_factors(
     return tuple(all_factors)
 
 
+def learn_phase_factors_from_file(
+    input_path: Path, cog_count: int = DEFAULT_COG_COUNT
+) -> tuple[tuple[float, ...], ...]:
+    """Estimate tooth-pitch correction without retaining every raw frame."""
+
+    previous: list[int | None] = [None] * 4
+    laps: list[list[int]] = [[] for _ in range(4)]
+    phase_samples: list[list[list[float]]] = [
+        [[] for _ in range(cog_count)] for _ in range(4)
+    ]
+    for frame in iter_raw_frames(input_path):
+        for wheel, timestamps in enumerate(frame.wheel_timestamps):
+            for timestamp in timestamps:
+                prior = previous[wheel]
+                previous[wheel] = timestamp
+                if prior is None or timestamp == prior:
+                    continue
+                laps[wheel].append((timestamp - prior) % TIMER_WRAP_US)
+                if len(laps[wheel]) != cog_count:
+                    continue
+                lap = laps[wheel]
+                if (
+                    min(lap) >= 200
+                    and max(lap) <= 15_000
+                    and max(lap) < 2.0 * min(lap)
+                ):
+                    lap_mean = sum(lap) / cog_count
+                    for phase, interval_us in enumerate(lap):
+                        phase_samples[wheel][phase].append(interval_us / lap_mean)
+                laps[wheel] = []
+
+    all_factors: list[tuple[float, ...]] = []
+    for wheel_samples in phase_samples:
+        factors = [median(samples) if samples else 1.0 for samples in wheel_samples]
+        factor_mean = sum(factors) / cog_count
+        all_factors.append(tuple(value / factor_mean for value in factors))
+    return tuple(all_factors)
+
+
 def corrected_wheel_speeds(
     frames: Sequence[RawFrame],
     phase_factors: Sequence[Sequence[float]],
@@ -186,6 +225,71 @@ def corrected_wheel_speeds(
                 current_speeds[wheel] = 0.0
         output.append(current_speeds.copy())
     return output
+
+
+def iter_corrected_raw_speed_rows(
+    input_path: Path,
+    phase_factors: Sequence[Sequence[float]],
+    *,
+    sample_time_s: float = DEFAULT_SAMPLE_TIME_S,
+    cog_count: int = DEFAULT_COG_COUNT,
+    end_time_s: float | None = None,
+) -> Iterable[tuple[float, list[float], bool]]:
+    """Stream phase-corrected wheel speeds from a raw five-row recording."""
+
+    previous: list[int | None] = [None] * 4
+    phases = [0] * 4
+    frames_without_event = [0] * 4
+    current_speeds = [0.0] * 4
+    for index, frame in enumerate(iter_raw_frames(input_path)):
+        time_s = index * sample_time_s
+        if end_time_s is not None and time_s > end_time_s:
+            break
+        for wheel, timestamps in enumerate(frame.wheel_timestamps):
+            frames_without_event[wheel] += 1
+            for timestamp in timestamps:
+                frames_without_event[wheel] = 0
+                prior = previous[wheel]
+                previous[wheel] = timestamp
+                if prior is None or timestamp == prior:
+                    continue
+                interval_us = (timestamp - prior) % TIMER_WRAP_US
+                factor = phase_factors[wheel][phases[wheel] % cog_count]
+                phases[wheel] += 1
+                if 200 <= interval_us <= 50_000:
+                    corrected_us = interval_us / factor
+                    current_speeds[wheel] = (
+                        2.0 * math.pi / (cog_count * corrected_us * 1.0e-6)
+                    )
+            if frames_without_event[wheel] >= 5:
+                current_speeds[wheel] = 0.0
+        yield time_s, current_speeds.copy(), frame.blowout_signal
+
+
+def analyze_raw_file_window(
+    input_path: Path,
+    phase_factors: Sequence[Sequence[float]],
+    start_time_s: float,
+    end_time_s: float,
+    *,
+    signal_event_time_s: float | None = None,
+) -> CaseAnalysis:
+    """Run the detectors causally and retain one window from a long raw file."""
+
+    if start_time_s < 0.0 or end_time_s <= start_time_s:
+        raise ValueError("原始记录回放时间窗口无效")
+    normalized_factors = tuple(tuple(row) for row in phase_factors)
+    return analyze_speed_rows(
+        input_path,
+        iter_corrected_raw_speed_rows(
+            input_path,
+            normalized_factors,
+            end_time_s=end_time_s,
+        ),
+        collect_start_time_s=start_time_s,
+        phase_factors=normalized_factors,
+        signal_event_time_s=signal_event_time_s,
+    )
 
 
 def sustained_signal_onset(

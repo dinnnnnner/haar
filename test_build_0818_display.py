@@ -6,7 +6,11 @@ from pathlib import Path
 
 from build_0818_display import (
     analyze_wheel_speed_csv,
+    corrected_wheel_speeds,
+    iter_corrected_raw_speed_rows,
     iter_raw_frames,
+    learn_phase_factors,
+    learn_phase_factors_from_file,
     sustained_signal_onset,
 )
 from evaluate_0818_algorithms import (
@@ -36,6 +40,27 @@ class Build0818DisplayTests(unittest.TestCase):
     def test_sustained_onset_ignores_short_initial_high(self) -> None:
         values = [True] * 5 + [False] * 10 + [True] * 20
         self.assertEqual(sustained_signal_onset(values, 20, 0.01), 0.15)
+
+    def test_streaming_raw_correction_matches_in_memory_correction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.txt"
+            lines = ["Marks start\n", "Marks end\n"]
+            timestamps = [1000, 2000, 3000, 4000]
+            for index in range(100):
+                for wheel in range(4):
+                    timestamps[wheel] = (timestamps[wheel] + 900 + wheel * 10) % 65536
+                    lines.append(f"1 {timestamps[wheel]}\n")
+                lines.append(f"0 0 {int(index >= 80)}\n")
+            path.write_text("".join(lines), encoding="utf-8")
+
+            frames = list(iter_raw_frames(path))
+            expected_factors = learn_phase_factors(frames)
+            streamed_factors = learn_phase_factors_from_file(path)
+            self.assertEqual(streamed_factors, expected_factors)
+            expected_speeds = corrected_wheel_speeds(frames, expected_factors)
+            streamed = list(iter_corrected_raw_speed_rows(path, streamed_factors))
+            self.assertEqual([row[1] for row in streamed], expected_speeds)
+            self.assertTrue(streamed[-1][2])
 
     def test_analyzes_only_requested_csv_window_after_causal_warmup(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -149,6 +174,66 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("120.00–130.00s", detail)
         self.assertIn("dataset=0819", detail)
         self.assertIn('const MODE="quant"', detail)
+
+    def test_0820_index_summary_and_windowed_detail_use_saved_evaluation(self) -> None:
+        import json
+
+        root = Path(__file__).resolve().parent
+        with tempfile.TemporaryDirectory() as directory:
+            input_dir = Path(directory) / "0820"
+            input_dir.mkdir()
+            raw_path = input_dir / "rough road.txt"
+            lines = ["Marks start\n", "Marks end\n"]
+            timestamps = [1000, 2000, 3000, 4000]
+            for _index in range(100):
+                for wheel in range(4):
+                    timestamps[wheel] += 1000
+                    lines.append(f"1 {timestamps[wheel]}\n")
+                lines.append("0\n")
+            raw_path.write_text("".join(lines), encoding="utf-8")
+            stat = raw_path.stat()
+            evaluation = Path(directory) / "summary.json"
+            evaluation.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "cases": [
+                            {
+                                "case": raw_path.stem,
+                                "input_file": raw_path.name,
+                                "input_size": stat.st_size,
+                                "frames": 100,
+                                "duration_s": 0.99,
+                                "signal_event_time_s": None,
+                                "quant_first_alarms_s": {
+                                    "FL": None,
+                                    "FR": None,
+                                    "RL": None,
+                                    "RR": None,
+                                },
+                                "candidate_intervals": [],
+                                "phase_factors": [[1.0] * 48 for _ in range(4)],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            state = ConsoleState(
+                root / "0818",
+                input_0820_dir=input_dir,
+                evaluation_0820=evaluation,
+            )
+            page = state.render_index("0820")
+            detail = state.render_case(
+                raw_path.stem, 0.10, 0.20, "quant", "0820"
+            )
+        self.assertIn("0820 Quant 回放控制台", page)
+        self.assertIn("0/1", page)
+        self.assertEqual(len(state.summary("0820")["cases"]), 1)
+        self.assertIn("0820 颠簸路数据", detail)
+        self.assertIn("0.10–0.20s", detail)
+        self.assertIn("dataset=0820", detail)
 
     def test_robust_index_and_detail_use_current_detectors(self) -> None:
         summary = self.robust_state.summary("robust")
