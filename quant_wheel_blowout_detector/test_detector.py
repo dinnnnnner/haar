@@ -76,6 +76,58 @@ class QuantBlowoutDetectorTests(unittest.TestCase):
             )
         self.assertTrue(relaxed[-1].blowout_alarms[3])
 
+    def test_guarded_candidate_requires_persistent_physical_evidence(self) -> None:
+        cfg = QuantBlowoutConfig(
+            min_physical_edge=0.030,
+            max_physical_peak=0.040,
+            strong_max_physical_peak=0.035,
+        )
+
+        def run(event_frames: int | None):
+            detector = QuantBlowoutDetector(cfg)
+            results = []
+            for index in range(720):
+                common = 50.0 + min(index, 420) * 0.005
+                steering = 0.0015 * max(0, min(index - 350, 80))
+                wheels = [
+                    common + steering,
+                    common - steering,
+                    common + steering,
+                    common - steering,
+                ]
+                if index >= 480 and (
+                    event_frames is None or index < 480 + event_frames
+                ):
+                    wheels[3] *= 1.014
+                results.append(
+                    detector.push(
+                        QuantFrame.from_sequences(index * 0.01, wheels)
+                    )
+                )
+            return results
+
+        persistent = run(None)
+        candidate_index = next(
+            index
+            for index, result in enumerate(persistent)
+            if result.states[3] == "candidate"
+        )
+        alarm_index = next(
+            index
+            for index, result in enumerate(persistent)
+            if result.new_blowouts[3]
+        )
+        self.assertGreaterEqual(alarm_index - candidate_index, 50)
+
+        transient = run(20)
+        self.assertTrue(any(result.states[3] == "candidate" for result in transient))
+        self.assertFalse(any(result.blowout_alarms[3] for result in transient))
+
+    def test_dominant_physical_signature_allows_small_peer_motion(self) -> None:
+        results = self._run({3: (480, 0.018), 2: (480, 0.001)})
+        self.assertTrue(results[-1].blowout_alarms[3])
+        self.assertFalse(results[-1].blowout_alarms[2])
+
     def test_oversized_single_wheel_step_is_rejected_as_wheel_slip(self) -> None:
         results = self._run({0: (480, 0.060)}, turn=False)
         self.assertFalse(any(results[-1].blowout_alarms))

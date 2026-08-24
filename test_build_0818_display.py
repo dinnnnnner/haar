@@ -271,12 +271,12 @@ class Serve0818ConsoleTests(unittest.TestCase):
                 )
                 for case in summary["cases"]
             ),
-            7,
+            14,
         )
         page = self.state_0821.render_index("0821")
         self.assertIn("0821 Quant 爆胎回放控制台", page)
         self.assertIn("71,030 帧", page)
-        self.assertIn("7/14", page)
+        self.assertIn("14/14", page)
         detail = self.state_0821.render_case(
             "20260821_30kph_RRBlowOut", None, None, "quant", "0821"
         )
@@ -333,11 +333,11 @@ class Serve0818ConsoleTests(unittest.TestCase):
                 case["quant_first_alarms_s"]["RR"] is not None
                 for case in summary["cases"]
             ),
-            2,
+            4,
         )
         page = self.ly_state.render_index("ly")
         self.assertIn("LY 实车爆胎 Quant 控制台", page)
-        self.assertIn("2/8", page)
+        self.assertIn("4/8", page)
         self.assertIn("E01_event_000", page)
         self.assertIn("20260116_yuan_baotai_rr100_45kmh.txt", page)
         detail = self.ly_state.render_case("E01", 39.0, 42.0, "quant", "ly")

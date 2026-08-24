@@ -41,6 +41,13 @@ class QuantBlowoutConfig:
     max_shock_trigger_z: float = 4.5
     shock_isolation_z: float = 2.0
     min_physical_edge: float = 0.0039
+    # A weaker edge may acquire a candidate when the level evidence already
+    # agrees with the same wheel.  These candidates use a separate, longer
+    # physical confirmation path and never inherit the regular 16-frame gate.
+    guarded_shock_isolation_z: float = 1.8
+    guarded_min_physical_edge: float = 0.0025
+    guarded_min_level_z: float = 2.5
+    guarded_min_level_isolation_z: float = 1.8
     cusum_decay: float = 0.94
     cusum_drift_z: float = 1.0
     persistence_decay: float = 0.985
@@ -56,7 +63,7 @@ class QuantBlowoutConfig:
     min_physical_peak: float = 0.0060
     min_physical_peak_with_common_motion: float = 0.0100
     small_peak_max_common_log_range: float = 0.020
-    max_physical_peak: float = 0.0250
+    max_physical_peak: float = 0.0300
     min_physical_persistence: float = 0.0060
     physical_persistence_floor: float = 0.0028
     min_persistence_fraction: float = 0.75
@@ -71,6 +78,23 @@ class QuantBlowoutConfig:
     max_peer_physical_median: float = 0.0
     min_median_risk: float = 52.5
     min_peak_risk: float = 82.0
+    # Strong single-wheel physical evidence can confirm without requiring the
+    # correlated statistical scores to cross every threshold independently.
+    strong_physical_peak: float = 0.0180
+    strong_max_physical_peak: float = 0.0250
+    strong_median_physical: float = 0.0120
+    strong_min_peak_risk: float = 60.0
+    strong_max_candidate_frames: int = 30
+    guarded_confirm_frames: int = 50
+    guarded_physical_peak: float = 0.0080
+    guarded_median_physical: float = 0.0045
+    guarded_persistence_fraction: float = 0.65
+    guarded_min_median_risk: float = 27.0
+    guarded_min_median_isolation: float = 1.5
+    guarded_min_isolation_fraction: float = 0.75
+    guarded_max_common_log_range: float = 0.120
+    dominant_peer_physical_median: float = 0.0020
+    dominant_peer_fraction: float = 0.10
     max_common_log_range: float = 0.050
     max_braking_log_range: float = 0.250
     min_braking_range_fraction: float = 0.80
@@ -95,12 +119,26 @@ class QuantBlowoutConfig:
             raise ValueError("covariance_refresh_frames must be positive")
         if self.max_shock_trigger_z <= self.shock_trigger_z:
             raise ValueError("shock trigger limits are invalid")
+        if not 0.0 < self.guarded_min_physical_edge < self.min_physical_edge:
+            raise ValueError("guarded physical edge must be below the regular edge")
+        if self.guarded_shock_isolation_z > self.shock_isolation_z:
+            raise ValueError("guarded shock isolation cannot exceed the regular limit")
         if not 1 <= self.persistence_tail_frames <= self.confirm_frames:
             raise ValueError("persistence_tail_frames is outside confirm_frames")
         if self.candidate_timeout_frames < self.confirm_frames:
             raise ValueError("candidate timeout must cover confirmation")
+        if self.guarded_confirm_frames <= 0:
+            raise ValueError("guarded confirmation must be positive")
         if self.max_physical_peak <= self.min_physical_peak:
             raise ValueError("physical peak limits are invalid")
+        if not (
+            self.strong_physical_peak
+            <= self.strong_max_physical_peak
+            <= self.max_physical_peak
+        ):
+            raise ValueError("strong physical peak limits are invalid")
+        if self.strong_max_candidate_frames <= 0:
+            raise ValueError("strong confirmation lifetime must be positive")
         if not (
             self.min_physical_peak
             <= self.min_physical_peak_with_common_motion
@@ -111,6 +149,18 @@ class QuantBlowoutConfig:
             raise ValueError("min_persistence_fraction must be in [0, 1]")
         if not 0.0 <= self.min_isolation_fraction <= 1.0:
             raise ValueError("min_isolation_fraction must be in [0, 1]")
+        if not 0.0 <= self.guarded_persistence_fraction <= 1.0:
+            raise ValueError("guarded_persistence_fraction must be in [0, 1]")
+        if not 0.0 <= self.guarded_min_isolation_fraction <= 1.0:
+            raise ValueError("guarded_min_isolation_fraction must be in [0, 1]")
+        if self.guarded_max_common_log_range <= 0.0:
+            raise ValueError("guarded common-speed range must be positive")
+        if self.guarded_min_median_risk < 0.0:
+            raise ValueError("guarded risk must be non-negative")
+        if self.dominant_peer_physical_median < 0.0:
+            raise ValueError("dominant peer physical median must be non-negative")
+        if not 0.0 <= self.dominant_peer_fraction < 1.0:
+            raise ValueError("dominant_peer_fraction must be in [0, 1)")
         if self.max_braking_log_range < self.max_common_log_range:
             raise ValueError("braking common-speed range must cover the regular range")
         if not 0.0 <= self.min_braking_range_fraction <= 1.0:
@@ -199,6 +249,7 @@ class _WheelState:
     alarm: bool = False
     onset_index: int | None = None
     onset_time_s: float | None = None
+    candidate_mode: str | None = None
     candidate_frames: int = 0
     below_frames: int = 0
     peak_physical: float = 0.0
@@ -378,9 +429,11 @@ class QuantBlowoutDetector:
                 new,
             )
 
-        if not any(state.phase == "candidate" for state in self._states) and not any(
-            state.alarm for state in self._states
-        ):
+        regular_candidate = any(
+            state.phase == "candidate" and state.candidate_mode == "regular"
+            for state in self._states
+        )
+        if not regular_candidate and not any(state.alarm for state in self._states):
             self._level_model.update(factors)
             self._edge_model.update(edge)
 
@@ -433,19 +486,37 @@ class QuantBlowoutDetector:
             state.cusum,
             state.persistence,
         )
+        regular_trigger = (
+            shock_z >= self.cfg.shock_trigger_z
+            and shock_z <= self.cfg.max_shock_trigger_z
+            and shock_isolation >= self.cfg.shock_isolation_z
+            and physical_edge >= self.cfg.min_physical_edge
+        )
         if state.phase != "candidate":
             state.phase = "monitoring"
-            if (
+            guarded_trigger = (
                 shock_z >= self.cfg.shock_trigger_z
                 and shock_z <= self.cfg.max_shock_trigger_z
-                and shock_isolation >= self.cfg.shock_isolation_z
-                and physical_edge >= self.cfg.min_physical_edge
-            ):
+                and shock_isolation >= self.cfg.guarded_shock_isolation_z
+                and physical_edge >= self.cfg.guarded_min_physical_edge
+                and level_z >= self.cfg.guarded_min_level_z
+                and level_isolation >= self.cfg.guarded_min_level_isolation_z
+            )
+            if regular_trigger or guarded_trigger:
                 delay = self.cfg.smooth_window - 1 + self.cfg.edge_half_window
                 state.phase = "candidate"
                 state.onset_index = max(0, self._frame_index - delay)
                 state.onset_time_s = self._last_t_sec - delay / self.cfg.sample_rate_hz  # type: ignore[operator]
-                self._start_candidate(state)
+                self._start_candidate(
+                    state, "regular" if regular_trigger else "guarded"
+                )
+            return
+
+        if state.candidate_mode == "guarded" and regular_trigger:
+            delay = self.cfg.smooth_window - 1 + self.cfg.edge_half_window
+            state.onset_index = max(0, self._frame_index - delay)
+            state.onset_time_s = self._last_t_sec - delay / self.cfg.sample_rate_hz  # type: ignore[operator]
+            self._start_candidate(state, "regular")
             return
 
         state.candidate_frames += 1
@@ -484,7 +555,7 @@ class QuantBlowoutDetector:
             if braking
             else self.cfg.max_common_log_range
         )
-        confirmed = (
+        regular_confirmed = (
             state.peak_physical >= self.cfg.min_physical_peak
             and (
                 state.peak_physical >= self.cfg.min_physical_peak_with_common_motion
@@ -509,6 +580,72 @@ class QuantBlowoutDetector:
             and state.peak_risk >= self.cfg.min_peak_risk
             and common_range <= common_limit
         )
+        physical_median = median(physical_tail)
+        max_peer_median = max(
+            median(values) for values in zip(*peer_physical_tail)
+        )
+        physically_dominant = (
+            max_peer_median <= self.cfg.dominant_peer_physical_median
+            and max_peer_median
+            <= self.cfg.dominant_peer_fraction * physical_median
+        )
+        strong_physical_confirmed = (
+            state.peak_physical >= self.cfg.strong_physical_peak
+            and state.peak_physical <= self.cfg.strong_max_physical_peak
+            and physical_median >= self.cfg.strong_median_physical
+            and sum(
+                value >= self.cfg.physical_persistence_floor
+                for value in physical_tail
+            )
+            / len(physical_tail)
+            >= self.cfg.min_persistence_fraction
+            and physically_dominant
+            and state.peak_risk >= self.cfg.strong_min_peak_risk
+            and state.candidate_frames <= self.cfg.strong_max_candidate_frames
+            and common_range <= common_limit
+        )
+        guarded_physical_confirmed = False
+        if (
+            state.candidate_mode == "guarded"
+            and state.candidate_frames >= self.cfg.guarded_confirm_frames
+        ):
+            guarded_tail = self.cfg.guarded_confirm_frames
+            guarded_physical = state.physical_history[-guarded_tail:]
+            guarded_peer = state.peer_physical_history[-guarded_tail:]
+            guarded_risk = state.risk_history[-guarded_tail:]
+            guarded_isolation = state.isolation_history[-guarded_tail:]
+            guarded_median = median(guarded_physical)
+            guarded_max_peer = max(
+                median(values) for values in zip(*guarded_peer)
+            )
+            guarded_physical_confirmed = (
+                state.peak_physical >= self.cfg.guarded_physical_peak
+                and guarded_median >= self.cfg.guarded_median_physical
+                and sum(
+                    value >= self.cfg.physical_persistence_floor
+                    for value in guarded_physical
+                )
+                / len(guarded_physical)
+                >= self.cfg.guarded_persistence_fraction
+                and guarded_max_peer <= self.cfg.dominant_peer_physical_median
+                and guarded_max_peer
+                <= self.cfg.dominant_peer_fraction * guarded_median
+                and median(guarded_risk) >= self.cfg.guarded_min_median_risk
+                and median(guarded_isolation)
+                >= self.cfg.guarded_min_median_isolation
+                and sum(
+                    value >= self.cfg.level_isolation_floor_z
+                    for value in guarded_isolation
+                )
+                / len(guarded_isolation)
+                >= self.cfg.guarded_min_isolation_fraction
+                and common_range <= self.cfg.guarded_max_common_log_range
+            )
+        confirmed = (
+            (state.candidate_mode == "regular" and regular_confirmed)
+            or strong_physical_confirmed
+            or guarded_physical_confirmed
+        )
         if confirmed:
             state.phase = "alarm"
             state.alarm = True
@@ -517,7 +654,8 @@ class QuantBlowoutDetector:
             return
 
     @staticmethod
-    def _start_candidate(state: _WheelState) -> None:
+    def _start_candidate(state: _WheelState, mode: str) -> None:
+        state.candidate_mode = mode
         state.candidate_frames = 0
         state.below_frames = 0
         state.peak_physical = 0.0
@@ -534,6 +672,7 @@ class QuantBlowoutDetector:
         if state.alarm:
             return
         state.phase = "monitoring"
+        state.candidate_mode = None
         state.candidate_frames = 0
         state.below_frames = 0
         state.physical_history.clear()

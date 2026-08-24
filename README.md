@@ -20,8 +20,8 @@ python3 serve_0818_console.py
 回放为 0/5 报警。由于原始文件共 231 MB，0820 先保存全记录评价摘要，详情页
 再从记录开头因果运行到所选窗口结束，只保留最多 120 秒曲线。`0821 爆胎数据`
 页签展示 14 条 RR 爆胎记录，共 71,030 帧，覆盖 30 至 80 km/h 定速、加速和
-减速工况。当前 quant 正确检出 7/14，无错误轮位报警；已检出记录的确认延迟为
-0.28 至 1.17 秒。还可切换到
+减速工况。当前 quant 正确检出 14/14，无错误轮位报警；确认延迟为 0.28 至
+1.66 秒，平均 0.71 秒。还可切换到
 `RobustData 正常道路`，直接读取
 `speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
 轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
@@ -29,7 +29,7 @@ python3 serve_0818_console.py
 候选区间和首次报警会一直保留。还可切换到 `LY 实车爆胎`，展示
 `augmented_event_dataset_v2/manifest.csv` 中 8 条未增强的原始事件裁剪；红线为 RR
 爆胎真值，黑线为原始传感器信号，列表同时显示当前 quant 实际回放结果。
-当前 0818 参数在 LY 上检出 2/8（E01、E08）；页面不沿用旧评价表中的历史结果，
+当前参数在 LY 上检出 4/8（E01、E02、E03、E08）；页面不沿用旧评价表中的历史结果，
 避免列表与详情曲线不一致。每个子图左上角均显示指标标题，纵轴保留单位。
 
 ### 数据口径
@@ -76,9 +76,10 @@ python3 serve_0818_console.py \
 若仍需生成静态 HTML，可运行
 `python3 build_0818_display.py`。
 
-当前算法优化只采用 `60kpa_RRBlowOut`、`Acc_RRBlowOut` 和
-`Brk_RRBlowOut` 三条 0818 正样本；`40kph_RRBlowOut` 的标注和轮速反馈问题
-暂缓处理，ly 爆胎样本不参与调参或验收。独立复跑入口为：
+当前算法先使用 `60kpa_RRBlowOut`、`Acc_RRBlowOut` 和
+`Brk_RRBlowOut` 三条 0818 正样本开发，再使用 0821 的 14 条 RR 事件补充弱触发
+和强物理确认路径。0820 的 5 条颠簸路记录和 RobustData 的 37 条正常道路记录
+用于误报回归；LY 样本不参与调参。独立复跑入口为：
 
 ```bash
 python3 evaluate_0818_algorithms.py --jobs 4

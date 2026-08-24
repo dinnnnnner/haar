@@ -56,8 +56,14 @@
         },
         {
           "wheel": 3,
-          "start_s": 22.990000000000002,
+          "start_s": 22.17,
           "end_s": 24.19,
+          "confirmed": false
+        },
+        {
+          "wheel": 1,
+          "start_s": 22.5,
+          "end_s": 23.7,
           "confirmed": false
         },
         {
@@ -79,6 +85,12 @@
           "confirmed": false
         },
         {
+          "wheel": 2,
+          "start_s": 30.14,
+          "end_s": 32.0,
+          "confirmed": false
+        },
+        {
           "wheel": 3,
           "start_s": 30.43,
           "end_s": 30.73,
@@ -88,12 +100,6 @@
           "wheel": 1,
           "start_s": 30.490000000000002,
           "end_s": 30.8,
-          "confirmed": false
-        },
-        {
-          "wheel": 2,
-          "start_s": 30.8,
-          "end_s": 32.0,
           "confirmed": false
         },
         {
@@ -429,6 +435,12 @@
           "confirmed": false
         },
         {
+          "wheel": 0,
+          "start_s": 21.87,
+          "end_s": 23.45,
+          "confirmed": false
+        },
+        {
           "wheel": 1,
           "start_s": 22.17,
           "end_s": 22.330000000000002,
@@ -438,12 +450,6 @@
           "wheel": 2,
           "start_s": 22.43,
           "end_s": 23.63,
-          "confirmed": false
-        },
-        {
-          "wheel": 0,
-          "start_s": 22.490000000000002,
-          "end_s": 23.45,
           "confirmed": false
         },
         {
@@ -689,8 +695,14 @@
           "confirmed": false
         },
         {
+          "wheel": 0,
+          "start_s": 31.89,
+          "end_s": 33.09,
+          "confirmed": false
+        },
+        {
           "wheel": 2,
-          "start_s": 32.05,
+          "start_s": 32.04,
           "end_s": 33.25,
           "confirmed": false
         },
@@ -927,19 +939,19 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 36.34
       },
       "candidate_intervals": [
         {
-          "wheel": 2,
-          "start_s": 36.04,
-          "end_s": 37.24,
-          "confirmed": false
+          "wheel": 3,
+          "start_s": 35.84,
+          "end_s": 36.34,
+          "confirmed": true
         },
         {
-          "wheel": 0,
-          "start_s": 37.96,
-          "end_s": 38.11,
+          "wheel": 2,
+          "start_s": 36.04,
+          "end_s": 36.35,
           "confirmed": false
         }
       ],
@@ -1157,7 +1169,7 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 46.15
       },
       "candidate_intervals": [
         {
@@ -1185,10 +1197,16 @@
           "confirmed": false
         },
         {
-          "wheel": 1,
-          "start_s": 46.74,
-          "end_s": 46.89,
+          "wheel": 0,
+          "start_s": 42.95,
+          "end_s": 44.15,
           "confirmed": false
+        },
+        {
+          "wheel": 3,
+          "start_s": 45.65,
+          "end_s": 46.15,
+          "confirmed": true
         },
         {
           "wheel": 0,
@@ -1197,21 +1215,9 @@
           "confirmed": false
         },
         {
-          "wheel": 2,
-          "start_s": 47.06,
-          "end_s": 47.52,
-          "confirmed": false
-        },
-        {
-          "wheel": 3,
-          "start_s": 47.28,
-          "end_s": 48.480000000000004,
-          "confirmed": false
-        },
-        {
           "wheel": 0,
-          "start_s": 47.38,
-          "end_s": 47.53,
+          "start_s": 47.44,
+          "end_s": 47.59,
           "confirmed": false
         }
       ],
@@ -1429,31 +1435,19 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 35.77
       },
       "candidate_intervals": [
         {
-          "wheel": 1,
-          "start_s": 37.83,
-          "end_s": 38.480000000000004,
-          "confirmed": false
+          "wheel": 3,
+          "start_s": 35.27,
+          "end_s": 35.77,
+          "confirmed": true
         },
         {
           "wheel": 0,
-          "start_s": 37.88,
-          "end_s": 38.03,
-          "confirmed": false
-        },
-        {
-          "wheel": 3,
-          "start_s": 38.12,
-          "end_s": 38.480000000000004,
-          "confirmed": false
-        },
-        {
-          "wheel": 2,
-          "start_s": 38.44,
-          "end_s": 38.480000000000004,
+          "start_s": 38.27,
+          "end_s": 38.42,
           "confirmed": false
         }
       ],
@@ -1671,13 +1665,19 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 32.15
       },
       "candidate_intervals": [
         {
           "wheel": 1,
           "start_s": 13.1,
           "end_s": 14.3,
+          "confirmed": false
+        },
+        {
+          "wheel": 0,
+          "start_s": 14.42,
+          "end_s": 15.620000000000001,
           "confirmed": false
         },
         {
@@ -1711,10 +1711,22 @@
           "confirmed": false
         },
         {
+          "wheel": 3,
+          "start_s": 29.26,
+          "end_s": 30.21,
+          "confirmed": false
+        },
+        {
           "wheel": 1,
           "start_s": 30.5,
-          "end_s": 30.8,
+          "end_s": 30.810000000000002,
           "confirmed": false
+        },
+        {
+          "wheel": 3,
+          "start_s": 31.62,
+          "end_s": 32.15,
+          "confirmed": true
         }
       ],
       "phase_factors": [
@@ -1942,7 +1954,7 @@
         },
         {
           "wheel": 0,
-          "start_s": 26.47,
+          "start_s": 26.46,
           "end_s": 26.89,
           "confirmed": false
         },
@@ -2267,6 +2279,12 @@
       },
       "candidate_intervals": [
         {
+          "wheel": 3,
+          "start_s": 18.740000000000002,
+          "end_s": 19.94,
+          "confirmed": false
+        },
+        {
           "wheel": 2,
           "start_s": 19.29,
           "end_s": 20.490000000000002,
@@ -2280,7 +2298,7 @@
         },
         {
           "wheel": 2,
-          "start_s": 26.29,
+          "start_s": 26.28,
           "end_s": 27.490000000000002,
           "confirmed": false
         },
@@ -2298,7 +2316,7 @@
         },
         {
           "wheel": 2,
-          "start_s": 34.65,
+          "start_s": 34.64,
           "end_s": 35.85,
           "confirmed": false
         },
@@ -2529,7 +2547,7 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 23.12
       },
       "candidate_intervals": [
         {
@@ -2545,10 +2563,10 @@
           "confirmed": false
         },
         {
-          "wheel": 2,
-          "start_s": 23.18,
-          "end_s": 24.38,
-          "confirmed": false
+          "wheel": 3,
+          "start_s": 22.62,
+          "end_s": 23.12,
+          "confirmed": true
         }
       ],
       "phase_factors": [
@@ -2765,7 +2783,7 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 51.25
       },
       "candidate_intervals": [
         {
@@ -2794,14 +2812,14 @@
         },
         {
           "wheel": 2,
-          "start_s": 46.29,
+          "start_s": 45.88,
           "end_s": 47.49,
           "confirmed": false
         },
         {
           "wheel": 1,
           "start_s": 50.84,
-          "end_s": 51.42,
+          "end_s": 51.26,
           "confirmed": false
         },
         {
@@ -2813,20 +2831,8 @@
         {
           "wheel": 3,
           "start_s": 50.99,
-          "end_s": 51.26,
-          "confirmed": false
-        },
-        {
-          "wheel": 2,
-          "start_s": 51.27,
-          "end_s": 51.42,
-          "confirmed": false
-        },
-        {
-          "wheel": 3,
-          "start_s": 51.31,
-          "end_s": 51.42,
-          "confirmed": false
+          "end_s": 51.25,
+          "confirmed": true
         },
         {
           "wheel": 0,
@@ -3273,9 +3279,15 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": null
+        "RR": 25.76
       },
       "candidate_intervals": [
+        {
+          "wheel": 2,
+          "start_s": 9.74,
+          "end_s": 10.94,
+          "confirmed": false
+        },
         {
           "wheel": 3,
           "start_s": 9.83,
@@ -3320,20 +3332,14 @@
         },
         {
           "wheel": 3,
-          "start_s": 25.6,
-          "end_s": 26.42,
-          "confirmed": false
+          "start_s": 25.51,
+          "end_s": 25.76,
+          "confirmed": true
         },
         {
           "wheel": 0,
           "start_s": 26.2,
           "end_s": 26.35,
-          "confirmed": false
-        },
-        {
-          "wheel": 1,
-          "start_s": 26.52,
-          "end_s": 26.67,
           "confirmed": false
         }
       ],
@@ -3551,13 +3557,31 @@
         "FL": null,
         "FR": null,
         "RL": null,
-        "RR": 66.07000000000001
+        "RR": 66.02
       },
       "candidate_intervals": [
+        {
+          "wheel": 2,
+          "start_s": 46.88,
+          "end_s": 48.08,
+          "confirmed": false
+        },
         {
           "wheel": 0,
           "start_s": 52.31,
           "end_s": 52.46,
+          "confirmed": false
+        },
+        {
+          "wheel": 1,
+          "start_s": 53.32,
+          "end_s": 53.730000000000004,
+          "confirmed": false
+        },
+        {
+          "wheel": 3,
+          "start_s": 57.61,
+          "end_s": 58.81,
           "confirmed": false
         },
         {
@@ -3568,14 +3592,14 @@
         },
         {
           "wheel": 2,
-          "start_s": 65.21000000000001,
-          "end_s": 66.08,
+          "start_s": 65.2,
+          "end_s": 66.03,
           "confirmed": false
         },
         {
           "wheel": 3,
           "start_s": 65.86,
-          "end_s": 66.07000000000001,
+          "end_s": 66.02,
           "confirmed": true
         },
         {
