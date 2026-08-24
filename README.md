@@ -18,7 +18,10 @@ python3 serve_0818_console.py
 当前 quant 也均未报警，因此按未标注爆胎数据展示。`0820 颠簸路数据` 页签
 展示 5 条颠簸路和减速带正常道路记录，共 677,100 帧、1.88 小时；完整 quant
 回放为 0/5 报警。由于原始文件共 231 MB，0820 先保存全记录评价摘要，详情页
-再从记录开头因果运行到所选窗口结束，只保留最多 120 秒曲线。还可切换到
+再从记录开头因果运行到所选窗口结束，只保留最多 120 秒曲线。`0821 爆胎数据`
+页签展示 14 条 RR 爆胎记录，共 71,030 帧，覆盖 30 至 80 km/h 定速、加速和
+减速工况。当前 quant 正确检出 7/14，无错误轮位报警；已检出记录的确认延迟为
+0.28 至 1.17 秒。还可切换到
 `RobustData 正常道路`，直接读取
 `speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
 轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
@@ -32,7 +35,7 @@ python3 serve_0818_console.py
 ### 数据口径
 
 当前页面和 `quant` 检测器仍然只使用 FL/FR/RL/RR 四轮轮速。
-`0818`、`0819`、`0820`、`RobustData` 和 `LY` 只是五个可切换的数据集，不会把胎压信号输入算法。
+`0818`、`0819`、`0820`、`0821`、`RobustData` 和 `LY` 只是六个可切换的数据集，不会把胎压信号输入算法。
 LY 图中的黑色爆胎信号只用于真值对照和事件定位。
 
 ### 在另一台电脑启动
@@ -47,13 +50,14 @@ python3 serve_0818_console.py --host 0.0.0.0 --port 8773
 
 本机浏览器访问 `http://127.0.0.1:8773`；局域网内其他设备访问
 `http://<启动服务的电脑 IP>:8773`。页面顶部应显示 `0818 爆胎数据`、
-`0819 新采数据`、`0820 颠簸路数据`、`RobustData 正常道路` 和
-`LY 实车爆胎` 五个页签。
+`0819 新采数据`、`0820 颠簸路数据`、`0821 爆胎数据`、
+`RobustData 正常道路` 和 `LY 实车爆胎` 六个页签。
 
-0820 原始文件变更后，先重新生成全记录评价摘要：
+0820 或 0821 原始文件变更后，先重新生成对应的全记录评价摘要：
 
 ```bash
 python3 evaluate_0820_quant.py
+python3 evaluate_0821_quant.py
 ```
 
 如评价文件位于其他位置，可显式指定：
@@ -63,6 +67,8 @@ python3 serve_0818_console.py \
   --input-0819-dir /path/to/0819 \
   --input-0820-dir /path/to/0820 \
   --evaluation-0820 /path/to/0820_quant_evaluation/summary.json \
+  --input-0821-dir /path/to/0821 \
+  --evaluation-0821 /path/to/0821_quant_evaluation/summary.json \
   --robust-evaluation /path/to/robust_evaluation.csv \
   --ly-manifest /path/to/ly/manifest.csv
 ```

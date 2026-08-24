@@ -90,6 +90,8 @@ def iter_raw_frames(path: Path) -> Iterable[RawFrame]:
     """Read the five non-empty rows that make up each 0818 frame."""
 
     in_data = False
+    in_embedded_header = False
+    interrupted_line = ""
     rows: list[str] = []
     with path.open("r", encoding="utf-8-sig", errors="replace") as handle:
         for line in handle:
@@ -100,6 +102,18 @@ def iter_raw_frames(path: Path) -> Iterable[RawFrame]:
                 continue
             if not stripped:
                 continue
+            marker = stripped.lower().find("marks start")
+            if marker >= 0:
+                interrupted_line += stripped[:marker]
+                in_embedded_header = True
+                continue
+            if in_embedded_header:
+                if stripped.lower() == "marks end":
+                    in_embedded_header = False
+                continue
+            if interrupted_line:
+                stripped = interrupted_line + stripped
+                interrupted_line = ""
             rows.append(stripped)
             if len(rows) != 5:
                 continue
@@ -114,6 +128,8 @@ def iter_raw_frames(path: Path) -> Iterable[RawFrame]:
             rows.clear()
     if not in_data:
         raise ValueError(f"未找到 Marks end：{path}")
+    if in_embedded_header or interrupted_line:
+        raise ValueError(f"文件结尾存在未闭合的内嵌文件头：{path}")
     if rows:
         raise ValueError(f"文件结尾存在不完整帧（{len(rows)}/5 行）：{path}")
 
