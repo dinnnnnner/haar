@@ -94,14 +94,20 @@ def evaluate_case(
     }
 
 
-def run(input_dir: Path, output: Path) -> dict[str, Any]:
+def run(
+    input_dir: Path,
+    output: Path,
+    *,
+    dataset_name: str = "0820",
+) -> dict[str, Any]:
     input_dir = input_dir.resolve()
     paths = sorted(input_dir.glob("*.txt"))
     if not paths:
-        raise ValueError(f"目录内没有 0820 txt 数据：{input_dir}")
+        raise ValueError(f"目录内没有 {dataset_name} txt 数据：{input_dir}")
 
     summary: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
+        "dataset": dataset_name,
         "input_dir": str(input_dir),
         "algorithm": "quant",
         "cases": [],
@@ -136,7 +142,7 @@ def main() -> None:
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    summary = run(args.input_dir, args.output)
+    summary = run(args.input_dir, args.output, dataset_name="0820")
     alarms = sum(
         any(value is not None for value in case["quant_first_alarms_s"].values())
         for case in summary["cases"]

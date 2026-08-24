@@ -41,6 +41,21 @@ class Build0818DisplayTests(unittest.TestCase):
         values = [True] * 5 + [False] * 10 + [True] * 20
         self.assertEqual(sustained_signal_onset(values, 20, 0.01), 0.15)
 
+    def test_repairs_header_inserted_inside_signal_row(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.txt"
+            path.write_text(
+                "Marks start\nMarks end\n"
+                "1 100\n1 110\n1 120\n1 130\n"
+                "9 8 -0.Marks start\n"
+                "File name : repeated.txt\nMarks end\n"
+                "001709 1\n",
+                encoding="utf-8",
+            )
+            frames = list(iter_raw_frames(path))
+            self.assertEqual(len(frames), 1)
+            self.assertTrue(frames[0].blowout_signal)
+
     def test_streaming_raw_correction_matches_in_memory_correction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.txt"
@@ -105,6 +120,11 @@ class Serve0818ConsoleTests(unittest.TestCase):
         cls.state = ConsoleState(root / "0818")
         cls.state_0819 = ConsoleState(
             root / "0818", input_0819_dir=root / "0819"
+        )
+        cls.state_0821 = ConsoleState(
+            root / "0818",
+            input_0821_dir=root / "0821",
+            evaluation_0821=root / "0821_quant_evaluation" / "summary.json",
         )
         cls.robust_state = ConsoleState(
             root / "0818",
@@ -234,6 +254,36 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("0820 颠簸路数据", detail)
         self.assertIn("0.10–0.20s", detail)
         self.assertIn("dataset=0820", detail)
+
+    def test_0821_index_summary_and_event_detail_use_saved_evaluation(self) -> None:
+        summary = self.state_0821.summary("0821")
+        self.assertEqual(len(summary["cases"]), 14)
+        self.assertEqual(sum(case["frames"] for case in summary["cases"]), 71_030)
+        self.assertTrue(
+            all(case["signal_event_time_s"] is not None for case in summary["cases"])
+        )
+        self.assertEqual(
+            sum(
+                case["quant_first_alarms_s"]["RR"] is not None
+                and all(
+                    case["quant_first_alarms_s"][wheel] is None
+                    for wheel in ("FL", "FR", "RL")
+                )
+                for case in summary["cases"]
+            ),
+            7,
+        )
+        page = self.state_0821.render_index("0821")
+        self.assertIn("0821 Quant 爆胎回放控制台", page)
+        self.assertIn("71,030 帧", page)
+        self.assertIn("7/14", page)
+        detail = self.state_0821.render_case(
+            "20260821_30kph_RRBlowOut", None, None, "quant", "0821"
+        )
+        self.assertIn("0821 RR 爆胎数据", detail)
+        self.assertIn("RR 39.62s / +0.28s", detail)
+        self.assertIn("const EVENT=39.34", detail)
+        self.assertIn("dataset=0821", detail)
 
     def test_robust_index_and_detail_use_current_detectors(self) -> None:
         summary = self.robust_state.summary("robust")
