@@ -126,6 +126,13 @@ class Serve0818ConsoleTests(unittest.TestCase):
             input_0821_dir=root / "0821",
             evaluation_0821=root / "0821_quant_evaluation" / "summary.json",
         )
+        cls.state_0826_0827 = ConsoleState(
+            root / "0818",
+            input_0826_dir=root / "0826",
+            evaluation_0826=root / "0826_quant_evaluation" / "summary.json",
+            input_0827_dir=root / "0827",
+            evaluation_0827=root / "0827_quant_evaluation" / "summary.json",
+        )
         cls.robust_state = ConsoleState(
             root / "0818",
             robust_evaluation=(
@@ -284,6 +291,31 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("RR 39.62s / +0.28s", detail)
         self.assertIn("const EVENT=39.34", detail)
         self.assertIn("dataset=0821", detail)
+
+    def test_0826_and_0827_are_available_in_the_main_console(self) -> None:
+        summary_0826 = self.state_0826_0827.summary("0826")
+        summary_0827 = self.state_0826_0827.summary("0827")
+        self.assertEqual(len(summary_0826["cases"]), 15)
+        self.assertEqual(len(summary_0827["cases"]), 14)
+
+        page_0826 = self.state_0826_0827.render_index("0826")
+        self.assertIn("急加速爆胎 / 20260826_Acc_1_FLBlowOut", page_0826)
+        self.assertIn("急减速爆胎 / 20260826_Acc_1_FLBlowOut", page_0826)
+        self.assertIn("9/15", page_0826)
+
+        page_0827 = self.state_0826_0827.render_index("0827")
+        self.assertIn("LowMueABS", page_0827)
+        self.assertIn("0/14", page_0827)
+
+        detail = self.state_0826_0827.render_case(
+            "匀速爆胎 / 20260826_30kph_FLBlowOut",
+            None,
+            None,
+            "quant",
+            "0826",
+        )
+        self.assertIn("FL 爆胎真值", detail)
+        self.assertIn("dataset=0826", detail)
 
     def test_robust_index_and_detail_use_current_detectors(self) -> None:
         summary = self.robust_state.summary("robust")
