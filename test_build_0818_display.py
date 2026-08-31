@@ -132,6 +132,8 @@ class Serve0818ConsoleTests(unittest.TestCase):
             evaluation_0826=root / "0826_quant_evaluation" / "summary.json",
             input_0827_dir=root / "0827",
             evaluation_0827=root / "0827_quant_evaluation" / "summary.json",
+            input_0828_dir=root / "0828" / "20260828爆胎测试",
+            evaluation_0828=root / "0828_quant_evaluation" / "summary.json",
         )
         cls.robust_state = ConsoleState(
             root / "0818",
@@ -292,20 +294,33 @@ class Serve0818ConsoleTests(unittest.TestCase):
         self.assertIn("const EVENT=39.34", detail)
         self.assertIn("dataset=0821", detail)
 
-    def test_0826_and_0827_are_available_in_the_main_console(self) -> None:
+    def test_0826_through_0828_are_available_in_the_main_console(self) -> None:
         summary_0826 = self.state_0826_0827.summary("0826")
         summary_0827 = self.state_0826_0827.summary("0827")
+        summary_0828 = self.state_0826_0827.summary("0828")
         self.assertEqual(len(summary_0826["cases"]), 15)
         self.assertEqual(len(summary_0827["cases"]), 14)
+        self.assertEqual(len(summary_0828["cases"]), 12)
+        repaired_event = next(
+            case["signal_event_time_s"]
+            for case in summary_0828["cases"]
+            if case["case"] == "减速爆胎 / 20260828_Acc_1_FLBlowOut"
+        )
+        self.assertAlmostEqual(repaired_event, 29.34, places=2)
 
         page_0826 = self.state_0826_0827.render_index("0826")
         self.assertIn("急加速爆胎 / 20260826_Acc_1_FLBlowOut", page_0826)
         self.assertIn("急减速爆胎 / 20260826_Acc_1_FLBlowOut", page_0826)
-        self.assertIn("9/15", page_0826)
+        self.assertIn("10/15", page_0826)
 
         page_0827 = self.state_0826_0827.render_index("0827")
         self.assertIn("LowMueABS", page_0827)
         self.assertIn("0/14", page_0827)
+
+        page_0828 = self.state_0826_0827.render_index("0828")
+        self.assertIn("急加速爆胎 / 20260828_Acc_1_FLBlowOut", page_0828)
+        self.assertIn("减速爆胎 / 20260828_Acc_1_FLBlowOut", page_0828)
+        self.assertIn("4/12", page_0828)
 
         detail = self.state_0826_0827.render_case(
             "匀速爆胎 / 20260826_30kph_FLBlowOut",
@@ -316,6 +331,17 @@ class Serve0818ConsoleTests(unittest.TestCase):
         )
         self.assertIn("FL 爆胎真值", detail)
         self.assertIn("dataset=0826", detail)
+
+        detail_0828 = self.state_0826_0827.render_case(
+            "减速爆胎 / 20260828_Acc_2_FLBlowOut",
+            None,
+            None,
+            "quant",
+            "0828",
+        )
+        self.assertIn("0828 FL 爆胎数据", detail_0828)
+        self.assertIn("FL 22.64s / +0.53s", detail_0828)
+        self.assertIn("dataset=0828", detail_0828)
 
     def test_robust_index_and_detail_use_current_detectors(self) -> None:
         summary = self.robust_state.summary("robust")
@@ -365,11 +391,11 @@ class Serve0818ConsoleTests(unittest.TestCase):
                 case["quant_first_alarms_s"]["RR"] is not None
                 for case in summary["cases"]
             ),
-            4,
+            5,
         )
         page = self.ly_state.render_index("ly")
         self.assertIn("LY 实车爆胎 Quant 控制台", page)
-        self.assertIn("4/8", page)
+        self.assertIn("5/8", page)
         self.assertIn("E01_event_000", page)
         self.assertIn("20260116_yuan_baotai_rr100_45kmh.txt", page)
         detail = self.ly_state.render_case("E01", 39.0, 42.0, "quant", "ly")

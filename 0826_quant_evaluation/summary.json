@@ -3102,7 +3102,7 @@
       "duration_s": 59.99,
       "signal_event_time_s": 51.99,
       "quant_first_alarms_s": {
-        "FL": null,
+        "FL": 53.32,
         "FR": null,
         "RL": null,
         "RR": null
@@ -3135,31 +3135,13 @@
         {
           "wheel": 0,
           "start_s": 52.81,
-          "end_s": 54.02,
-          "confirmed": false
+          "end_s": 53.32,
+          "confirmed": true
         },
         {
           "wheel": 1,
           "start_s": 52.89,
           "end_s": 53.04,
-          "confirmed": false
-        },
-        {
-          "wheel": 0,
-          "start_s": 54.050000000000004,
-          "end_s": 55.25,
-          "confirmed": false
-        },
-        {
-          "wheel": 1,
-          "start_s": 54.14,
-          "end_s": 54.44,
-          "confirmed": false
-        },
-        {
-          "wheel": 2,
-          "start_s": 54.79,
-          "end_s": 55.28,
           "confirmed": false
         }
       ],

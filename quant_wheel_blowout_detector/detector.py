@@ -42,8 +42,9 @@ class QuantBlowoutConfig:
     shock_isolation_z: float = 2.0
     min_physical_edge: float = 0.0039
     # A weaker edge may acquire a candidate when the level evidence already
-    # agrees with the same wheel.  These candidates use a separate, longer
-    # physical confirmation path and never inherit the regular 16-frame gate.
+    # agrees with the same wheel.  The longer physical confirmation path also
+    # remains available after a guarded candidate upgrades to regular: the
+    # stronger later edge must not discard already accumulated persistence.
     guarded_shock_isolation_z: float = 1.8
     guarded_min_physical_edge: float = 0.0025
     guarded_min_level_z: float = 2.5
@@ -604,11 +605,8 @@ class QuantBlowoutDetector:
             and state.candidate_frames <= self.cfg.strong_max_candidate_frames
             and common_range <= common_limit
         )
-        guarded_physical_confirmed = False
-        if (
-            state.candidate_mode == "guarded"
-            and state.candidate_frames >= self.cfg.guarded_confirm_frames
-        ):
+        long_physical_confirmed = False
+        if state.candidate_frames >= self.cfg.guarded_confirm_frames:
             guarded_tail = self.cfg.guarded_confirm_frames
             guarded_physical = state.physical_history[-guarded_tail:]
             guarded_peer = state.peer_physical_history[-guarded_tail:]
@@ -618,7 +616,7 @@ class QuantBlowoutDetector:
             guarded_max_peer = max(
                 median(values) for values in zip(*guarded_peer)
             )
-            guarded_physical_confirmed = (
+            long_physical_confirmed = (
                 state.peak_physical >= self.cfg.guarded_physical_peak
                 and guarded_median >= self.cfg.guarded_median_physical
                 and sum(
@@ -644,7 +642,7 @@ class QuantBlowoutDetector:
         confirmed = (
             (state.candidate_mode == "regular" and regular_confirmed)
             or strong_physical_confirmed
-            or guarded_physical_confirmed
+            or long_physical_confirmed
         )
         if confirmed:
             state.phase = "alarm"

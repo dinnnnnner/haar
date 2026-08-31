@@ -34,6 +34,8 @@ DEFAULT_0826_INPUT_DIR = WORKSPACE_ROOT / "0826"
 DEFAULT_0826_EVALUATION = WORKSPACE_ROOT / "0826_quant_evaluation" / "summary.json"
 DEFAULT_0827_INPUT_DIR = WORKSPACE_ROOT / "0827"
 DEFAULT_0827_EVALUATION = WORKSPACE_ROOT / "0827_quant_evaluation" / "summary.json"
+DEFAULT_0828_INPUT_DIR = WORKSPACE_ROOT / "0828" / "20260828爆胎测试"
+DEFAULT_0828_EVALUATION = WORKSPACE_ROOT / "0828_quant_evaluation" / "summary.json"
 DEFAULT_ROBUST_EVALUATION = (
     WORKSPACE_ROOT / "speed_algorithm_evaluation" / "robust_evaluation.csv"
 )
@@ -260,6 +262,8 @@ class ConsoleState:
         evaluation_0826: Path | None = None,
         input_0827_dir: Path | None = None,
         evaluation_0827: Path | None = None,
+        input_0828_dir: Path | None = None,
+        evaluation_0828: Path | None = None,
         robust_evaluation: Path | None = None,
         ly_manifest: Path | None = None,
         max_window_s: float = 120.0,
@@ -291,6 +295,12 @@ class ConsoleState:
         )
         self.evaluation_0827 = (
             None if evaluation_0827 is None else evaluation_0827.resolve()
+        )
+        self.input_0828_dir = (
+            None if input_0828_dir is None else input_0828_dir.resolve()
+        )
+        self.evaluation_0828 = (
+            None if evaluation_0828 is None else evaluation_0828.resolve()
         )
         self.robust_evaluation = (
             None if robust_evaluation is None else robust_evaluation.resolve()
@@ -329,6 +339,10 @@ class ConsoleState:
             self.input_0827_dir, self.evaluation_0827, "0827"
         )
         self.case_ids_0827 = list(self.cases_0827)
+        self.cases_0828 = self._load_raw_evaluation_cases(
+            self.input_0828_dir, self.evaluation_0828, "0828"
+        )
+        self.case_ids_0828 = list(self.cases_0828)
         self.robust_cases = self._load_robust_cases()
         self.robust_case_ids = list(self.robust_cases)
         self._robust_replay = lru_cache(maxsize=len(self.robust_cases) or 1)(
@@ -528,13 +542,15 @@ class ConsoleState:
             return self._render_0826_index()
         if dataset == "0827":
             return self._render_0827_index()
+        if dataset == "0828":
+            return self._render_0828_index()
         if dataset == "robust":
             return self._render_robust_index()
         if dataset == "ly":
             return self._render_ly_index()
         if dataset != "0818":
             raise ValueError(
-                "dataset 必须是 0818、0819、0820、0821、0826、0827、robust 或 ly"
+                "dataset 必须是 0818、0819、0820、0821、0826、0827、0828、robust 或 ly"
             )
         analyses = [self.analyze(case_id) for case_id in self.case_ids]
         quant_hits = sum(
@@ -797,6 +813,56 @@ class ConsoleState:
 """,
         )
 
+    def _render_0828_index(self) -> str:
+        if not self.cases_0828:
+            raise ValueError("未配置 0828 quant 评价结果")
+        correct = sum(
+            case.quant_first_alarms[0] is not None
+            and all(value is None for value in case.quant_first_alarms[1:])
+            for case in self.cases_0828.values()
+        )
+        event_count = sum(
+            case.signal_event_time_s is not None for case in self.cases_0828.values()
+        )
+        rows = []
+        for case in self.cases_0828.values():
+            event = case.signal_event_time_s
+            case_url = f"/case/{quote(case.case_id)}?dataset=0828"
+            relative_path = (
+                case.input_path.relative_to(self.input_0828_dir)
+                if self.input_0828_dir is not None
+                else case.input_path
+            )
+            rows.append(
+                f"<tr><td><a href='{case_url}'>{html.escape(case.case_id)}</a>"
+                f"<small class='cell-sub'>{html.escape(str(relative_path))}</small></td>"
+                f"<td>{case.frames:,}</td><td>{case.duration_s:.2f}s</td>"
+                f"<td>{'—' if event is None else f'{event:.2f}s'}</td>"
+                f"<td>{html.escape(_alarm_text(case.quant_first_alarms, event))}</td>"
+                f"<td><a class='mini-button' href='{case_url}'>运行并查看</a></td></tr>"
+            )
+        total_frames = sum(case.frames for case in self.cases_0828.values())
+        total_duration = sum(case.duration_s for case in self.cases_0828.values())
+        return _page(
+            "0828 Quant FL 爆胎回放控制台",
+            f"""
+<header><div><p class='eyebrow'>0828 · QUANT FL BLOWOUT REPLAY</p><h1>0828 Quant FL 爆胎回放控制台</h1>
+<p class='muted'>急加速与减速工况 · FL 爆胎真值 · quant 完整因果评价</p></div>
+<nav><a class='button' href='/summary.json?dataset=0828'>下载回放摘要</a></nav></header>
+{self._dataset_tabs('0828')}
+<section class='cards'>
+ <div class='card accent'><span>0828 FL 事件</span><strong>{len(self.cases_0828)}</strong><small>{total_frames:,} 帧 / {total_duration / 60:.2f} 分钟</small></div>
+ <div class='card'><span>quant FL 正确检出</span><strong>{correct}/{len(self.cases_0828)}</strong><small>当前默认参数</small></div>
+ <div class='card'><span>持续爆胎信号</span><strong>{event_count}/{len(self.cases_0828)}</strong><small>按连续 20 帧高电平定位</small></div>
+</section>
+<section class='panel'><div class='controls'><input id='search' placeholder='搜索 0828 记录或工况…'><span id='count'></span></div>
+<div class='table-wrap'><table><thead><tr><th>工况 / 记录</th><th>帧数</th><th>时长</th><th>FL 真值时刻</th><th>quant / 延迟</th><th>操作</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table></div></section>
+<section class='notice'><b>命名口径：</b>急加速和减速目录中有同名记录，display 使用“工况 / 文件名”作为唯一 ID，CSV 胎压文件不参与当前纯轮速算法回放。</section>
+<script>{_FILTER_SCRIPT}</script>
+""",
+        )
+
     def _render_robust_index(self) -> str:
         if not self.robust_cases:
             raise ValueError("未配置 RobustData 评价结果")
@@ -891,6 +957,8 @@ class ConsoleState:
             items.append(("0826", "0826 FL 爆胎数据"))
         if self.case_ids_0827:
             items.append(("0827", "0827 工况数据"))
+        if self.case_ids_0828:
+            items.append(("0828", "0828 FL 爆胎数据"))
         items.extend(
             (("robust", "RobustData 正常道路"), ("ly", "LY 实车爆胎"))
         )
@@ -983,16 +1051,22 @@ class ConsoleState:
                     for case in self.cases_0821.values()
                 ],
             }
-        if dataset in ("0826", "0827"):
-            input_dir = (
-                self.input_0826_dir if dataset == "0826" else self.input_0827_dir
-            )
-            evaluation = (
-                self.evaluation_0826
-                if dataset == "0826"
-                else self.evaluation_0827
-            )
-            cases_by_id = self.cases_0826 if dataset == "0826" else self.cases_0827
+        if dataset in ("0826", "0827", "0828"):
+            input_dir = {
+                "0826": self.input_0826_dir,
+                "0827": self.input_0827_dir,
+                "0828": self.input_0828_dir,
+            }[dataset]
+            evaluation = {
+                "0826": self.evaluation_0826,
+                "0827": self.evaluation_0827,
+                "0828": self.evaluation_0828,
+            }[dataset]
+            cases_by_id = {
+                "0826": self.cases_0826,
+                "0827": self.cases_0827,
+                "0828": self.cases_0828,
+            }[dataset]
             return {
                 "input_dir": None if input_dir is None else str(input_dir),
                 "evaluation": None if evaluation is None else str(evaluation),
@@ -1069,7 +1143,7 @@ class ConsoleState:
             }
         if dataset != "0818":
             raise ValueError(
-                "dataset 必须是 0818、0819、0820、0821、0826、0827、robust 或 ly"
+                "dataset 必须是 0818、0819、0820、0821、0826、0827、0828、robust 或 ly"
             )
         cases = []
         for case_id in self.case_ids:
@@ -1192,6 +1266,23 @@ class ConsoleState:
             truth_value = "无" if event is None else f"{event:.2f}s"
             truth_note = "ABS、低附着及操稳正常工况"
             return_url = "/?dataset=0827"
+        elif dataset == "0828":
+            case = self.cases_0828.get(case_id)
+            if case is None:
+                raise KeyError(case_id)
+            event = case.signal_event_time_s
+            if start_s is None and end_s is None:
+                focus = event if event is not None else 0.0
+                start_s = max(0.0, focus - 3.0)
+                end_s = min(case.duration_s, focus + 10.0)
+            data_start = 0.0
+            data_end = case.duration_s
+            case_title = case.case_id
+            dataset_title = "0828 FL 爆胎数据"
+            truth_title = "FL 爆胎真值"
+            truth_value = "—" if event is None else f"{event:.2f}s"
+            truth_note = "原始信号仍逐帧显示"
+            return_url = "/?dataset=0828"
         elif dataset == "robust":
             case = self.robust_cases.get(case_id)
             if case is None:
@@ -1227,7 +1318,7 @@ class ConsoleState:
             return_url = "/?dataset=ly"
         else:
             raise ValueError(
-                "dataset 必须是 0818、0819、0820、0821、0826、0827、robust 或 ly"
+                "dataset 必须是 0818、0819、0820、0821、0826、0827、0828、robust 或 ly"
             )
         if start_s is None or end_s is None or end_s <= start_s:
             raise ValueError("start/end 时间窗口无效")
@@ -1241,7 +1332,7 @@ class ConsoleState:
             replay_summary = self.robust_replay(case_id)
             intervals = replay_summary.intervals
             quant_first_alarms = replay_summary.first_alarms
-        elif dataset in ("0820", "0821", "0826", "0827"):
+        elif dataset in ("0820", "0821", "0826", "0827", "0828"):
             data = analyze_raw_file_window(
                 case.input_path,
                 case.phase_factors,
@@ -1418,6 +1509,7 @@ class ConsoleState:
             "0821": self.case_ids_0821,
             "0826": self.case_ids_0826,
             "0827": self.case_ids_0827,
+            "0828": self.case_ids_0828,
             "robust": self.robust_case_ids,
             "ly": self.ly_case_ids,
         }[dataset]
@@ -1555,7 +1647,7 @@ _STYLE = """
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Serve the 0818, 0819, 0820, 0821, 0826, 0827, RobustData, "
+            "Serve the 0818, 0819, 0820, 0821, 0826, 0827, 0828, RobustData, "
             "and LY quant console."
         )
     )
@@ -1588,6 +1680,12 @@ def main() -> None:
         "--evaluation-0827", type=Path, default=DEFAULT_0827_EVALUATION
     )
     parser.add_argument(
+        "--input-0828-dir", type=Path, default=DEFAULT_0828_INPUT_DIR
+    )
+    parser.add_argument(
+        "--evaluation-0828", type=Path, default=DEFAULT_0828_EVALUATION
+    )
+    parser.add_argument(
         "--robust-evaluation", type=Path, default=DEFAULT_ROBUST_EVALUATION
     )
     parser.add_argument("--ly-manifest", type=Path, default=DEFAULT_LY_MANIFEST)
@@ -1608,6 +1706,8 @@ def main() -> None:
         evaluation_0826=args.evaluation_0826,
         input_0827_dir=args.input_0827_dir,
         evaluation_0827=args.evaluation_0827,
+        input_0828_dir=args.input_0828_dir,
+        evaluation_0828=args.evaluation_0828,
         robust_evaluation=args.robust_evaluation,
         ly_manifest=args.ly_manifest,
         max_window_s=args.max_window_s,
@@ -1615,7 +1715,7 @@ def main() -> None:
     ConsoleHandler.state = state
     server = ThreadingHTTPServer((args.host, args.port), ConsoleHandler)
     print(
-        "0818/0819/0820/0821/0826/0827/RobustData/LY quant console: "
+        "0818/0819/0820/0821/0826/0827/0828/RobustData/LY quant console: "
         f"http://{args.host}:{args.port}"
     )
     try:

@@ -21,10 +21,13 @@ python3 serve_0818_console.py
 再从记录开头因果运行到所选窗口结束，只保留最多 120 秒曲线。`0821 爆胎数据`
 页签展示 14 条 RR 爆胎记录，共 71,030 帧，覆盖 30 至 80 km/h 定速、加速和
 减速工况。当前 quant 正确检出 14/14，无错误轮位报警；确认延迟为 0.28 至
-1.66 秒，平均 0.71 秒。`0826 FL 爆胎数据` 页签展示 15 条 FL 爆胎记录；急加速
-和急减速目录内的同名文件使用工况前缀区分，不修改原始文件名。`0827 工况数据`
+1.66 秒，平均 0.71 秒。`0826 FL 爆胎数据` 页签展示 15 条 FL 爆胎记录，
+当前 quant 正确检出 10/15；急加速和急减速目录内的同名文件使用工况前缀区分，
+不修改原始文件名。`0827 工况数据`
 页签展示 14 条 ABS、低附着、分离路面、绕桩和越野记录，当前 quant 为 0/14
-报警。还可切换到
+报警。`0828 FL 爆胎数据` 页签展示急加速和减速工况的 12 条 FL 爆胎
+记录，共 60,130 帧；当前 quant 正确检出 4/12。同目录的 CSV 是胎压记录，
+不输入当前纯轮速算法。还可切换到
 `RobustData 正常道路`，直接读取
 `speed_algorithm_evaluation/robust_evaluation.csv` 中的 37 条评价记录及对应校正
 轮速 CSV；详情回放会从记录开头运行检测器以保留因果基线，但只向浏览器发送
@@ -32,14 +35,14 @@ python3 serve_0818_console.py
 候选区间和首次报警会一直保留。还可切换到 `LY 实车爆胎`，展示
 `augmented_event_dataset_v2/manifest.csv` 中 8 条未增强的原始事件裁剪；红线为 RR
 爆胎真值，黑线为原始传感器信号，列表同时显示当前 quant 实际回放结果。
-当前参数在 LY 上检出 4/8（E01、E02、E03、E08）；页面不沿用旧评价表中的历史结果，
+当前参数在 LY 上检出 5/8（E01、E02、E03、E04、E08）；页面不沿用旧评价表中的历史结果，
 避免列表与详情曲线不一致。每个子图左上角均显示指标标题，纵轴保留单位。
 
 ### 数据口径
 
 当前页面和 `quant` 检测器仍然只使用 FL/FR/RL/RR 四轮轮速。
-`0818`、`0819`、`0820`、`0821`、`0826`、`0827`、`RobustData` 和 `LY`
-只是八个可切换的数据集，不会把胎压信号输入算法。
+`0818`、`0819`、`0820`、`0821`、`0826`、`0827`、`0828`、`RobustData` 和 `LY`
+只是九个可切换的数据集，不会把胎压信号输入算法。
 LY 图中的黑色爆胎信号只用于真值对照和事件定位。
 
 ### 在另一台电脑启动
@@ -55,16 +58,17 @@ python3 serve_0818_console.py --host 0.0.0.0 --port 8773
 本机浏览器访问 `http://127.0.0.1:8773`；局域网内其他设备访问
 `http://<启动服务的电脑 IP>:8773`。页面顶部应显示 `0818 爆胎数据`、
 `0819 新采数据`、`0820 颠簸路数据`、`0821 爆胎数据`、
-`0826 FL 爆胎数据`、`0827 工况数据`、`RobustData 正常道路` 和
-`LY 实车爆胎` 八个页签。
+`0826 FL 爆胎数据`、`0827 工况数据`、`0828 FL 爆胎数据`、
+`RobustData 正常道路` 和 `LY 实车爆胎` 九个页签。
 
-0820、0821、0826 或 0827 原始文件变更后，先重新生成对应的全记录评价摘要：
+0820、0821、0826、0827 或 0828 原始文件变更后，先重新生成对应的全记录评价摘要：
 
 ```bash
 python3 evaluate_0820_quant.py
 python3 evaluate_0821_quant.py
 python3 evaluate_0826_quant.py
 python3 evaluate_0827_quant.py
+python3 evaluate_0828_quant.py
 ```
 
 如评价文件位于其他位置，可显式指定：
@@ -80,6 +84,8 @@ python3 serve_0818_console.py \
   --evaluation-0826 /path/to/0826_quant_evaluation/summary.json \
   --input-0827-dir /path/to/0827 \
   --evaluation-0827 /path/to/0827_quant_evaluation/summary.json \
+  --input-0828-dir /path/to/0828/20260828爆胎测试 \
+  --evaluation-0828 /path/to/0828_quant_evaluation/summary.json \
   --robust-evaluation /path/to/robust_evaluation.csv \
   --ly-manifest /path/to/ly/manifest.csv
 ```
